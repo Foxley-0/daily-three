@@ -1,0 +1,19 @@
+{
+  "appId": "com.superfoxs66.dailythree",
+  "appName": "每日三件事",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#07C160"
+    }
+  }
+}

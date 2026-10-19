@@ -1,0 +1,65 @@
+name: 打包 APK
+
+# 什么时候跑：
+#   - 改了 app/ 或 webapp/ 的代码
+#   - 改了 reminder.js（通知文案）
+#   - 手动点按钮触发
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'app/**'
+      - 'webapp/**'
+      - 'miniprogram/utils/reminder.js'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: 装 Java 21（Capacitor 7 要求）
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 装 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 装依赖
+        working-directory: app
+        run: npm ci
+
+      - name: 生成 www（从 webapp 复制网页 + 打包 reminder.js）
+        working-directory: app
+        run: node scripts/prepare-www.js
+
+      - name: 同步到 Android 工程
+        working-directory: app
+        run: npx cap sync android
+
+      - name: 编译 APK
+        working-directory: app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-three-apk
+          path: app/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,16 @@
+{
+  "name": "daily-three-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "每日三件事 - Android 版（Capacitor 套壳）",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}

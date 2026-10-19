@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">每日三件事</string>
+    <string name="title_activity_main">每日三件事</string>
+    <string name="package_name">com.superfoxs66.dailythree</string>
+    <string name="custom_url_scheme">com.superfoxs66.dailythree</string>
+</resources>

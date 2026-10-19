@@ -24,3 +24,8 @@ umdlogs/
 # JetBrains / PyCharm 的本地配置
 .idea/
 *.iml
+
+# Android / Capacitor 构建产物
+app/www/
+app/node_modules/
+app/npm-install.log
