@@ -4,13 +4,19 @@
   "private": true,
   "description": "每日三件事 - Android 版（Capacitor 套壳）",
   "scripts": {
+    "prepare:www": "node scripts/prepare-www.js",
+    "assets": "capacitor-assets generate --android",
     "sync": "cap sync android",
     "open": "cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
-    "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.3",
+    "@img/sharp-win32-x64": "^0.35.5"
   }
 }
