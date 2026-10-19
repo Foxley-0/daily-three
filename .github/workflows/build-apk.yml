@@ -16,7 +16,9 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 锁死 24.04：ubuntu-latest 从 2026-10-19 开始迁到 Ubuntu 26，
+    # 迁移期镜像不稳定，先钉住已知能用的版本。
+    runs-on: ubuntu-24.04
 
     steps:
       - name: 拉取代码
@@ -30,7 +32,7 @@ jobs:
           cache-dependency-path: app/package-lock.json
 
       - name: 装 Java 21（Capacitor 8 要求）
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
