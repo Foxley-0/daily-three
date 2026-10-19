@@ -16,7 +16,6 @@
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.5.3",
-    "@img/sharp-win32-x64": "^0.35.5"
+    "@capacitor/cli": "^8.5.3"
   }
 }
