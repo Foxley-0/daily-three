@@ -1,0 +1,92 @@
+<view class="navbar" style="padding-top:{{statusBarHeight}}px">
+  <view class="nav-inner">
+    <view class="nav-back" bindtap="goBack" hover-class="nav-back-hover" hover-stay-time="60">
+      <view class="nav-arrow"></view>
+    </view>
+    <view class="nav-title">假期设置</view>
+    <view class="nav-back nav-ghost"></view>
+  </view>
+</view>
+
+<view class="page" style="padding-top:{{navHeight}}px">
+
+  <!-- 月历 -->
+  <view class="cal-card">
+    <view class="cal-head">
+      <view class="cal-nav" bindtap="prevMonth" hover-class="cal-nav-hover" hover-stay-time="60">‹</view>
+      <view class="cal-title">{{monthLabel}}</view>
+      <view class="cal-nav" bindtap="nextMonth" hover-class="cal-nav-hover" hover-stay-time="60">›</view>
+    </view>
+
+    <view class="cal-week">
+      <view class="cal-week-cell" wx:for="{{weekdays}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="cal-grid">
+      <view class="cal-cell {{item.blank ? 'is-blank' : ''}} kind-{{item.kind}} {{item.today ? 'is-today' : ''}} {{item.past ? 'is-past' : ''}} {{item.selected ? 'is-selected' : ''}}"
+            wx:for="{{cells}}"
+            wx:key="idx"
+            data-key="{{item.key}}"
+            bindtap="tapDay">
+        <view class="cal-day" wx:if="{{!item.blank}}">{{item.day}}</view>
+      </view>
+    </view>
+
+    <view class="cal-legend">
+      <view class="lg"><view class="lg-dot lg-builtin"></view><text class="lg-text">法定假日</text></view>
+      <view class="lg"><view class="lg-dot lg-custom"></view><text class="lg-text">我的假期</text></view>
+      <view class="lg"><view class="lg-dot lg-today"></view><text class="lg-text">今天</text></view>
+    </view>
+
+    <view class="cal-note" wx:if="{{!covered}}">这个月不在内置表覆盖范围（{{coverage.from}} ~ {{coverage.to}}）内，法定假日暂时标不出来，可以手动标记兜底。</view>
+    <view class="cal-note" wx:else>点日期可以快速选起止；再点一次区间内的日子会重置成单日。</view>
+  </view>
+
+  <!-- 添加 -->
+  <view class="card">
+    <view class="card-title">添加假期</view>
+
+    <view class="field">
+      <text class="label">名称</text>
+      <input class="input" value="{{form.name}}" bindinput="onName"
+             placeholder="寒假 / 暑假 / 年假 / 出差" placeholder-class="ph" maxlength="8" />
+    </view>
+
+    <view class="field">
+      <text class="label">开始</text>
+      <picker mode="date" value="{{form.start}}" start="{{minDate}}" bindchange="onStart">
+        <view class="picker">{{form.start}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="label">结束</text>
+      <picker mode="date" value="{{form.end}}" start="{{minDate}}" bindchange="onEnd">
+        <view class="picker">{{form.end}}</view>
+      </picker>
+    </view>
+
+    <view class="days" wx:if="{{days > 0}}">共 {{days}} 天</view>
+
+    <view class="submit" bindtap="submit" hover-class="submit-hover" hover-stay-time="60">加入假期表</view>
+
+    <view class="hint">标记为假期的日子不记录、不断签，连续打卡会自动跳过；假期里做任务还有额外加分（每完成一件 +1，全完成再 +2）。</view>
+    <view class="hint">只能标记今天及以后 —— 假期的意义是提前安排，不是事后补账。</view>
+  </view>
+
+  <!-- 我标记的假期 -->
+  <view class="section-title">我标记的假期</view>
+
+  <view class="empty" wx:if="{{custom.length === 0}}">还没有手动标记的假期</view>
+
+  <view class="item" wx:for="{{custom}}" wx:key="id">
+    <view class="item-main">
+      <view class="item-name">{{item.name}}</view>
+      <view class="item-sub">{{item.rangeText}} · {{item.days}} 天</view>
+    </view>
+    <view class="item-del" data-id="{{item.id}}" bindtap="remove">删除</view>
+  </view>
+
+  <view class="note">内置法定节假日数据来源：国务院办公厅通知。{{nextYear}}的放假安排还没发布，届时更新一次代码即可。</view>
+
+</view>

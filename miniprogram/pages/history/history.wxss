@@ -1,0 +1,489 @@
+.page {
+  padding: 32rpx 32rpx 200rpx;
+}
+
+/* ---------- 月历 ---------- */
+
+.cal-card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 32rpx 24rpx 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  padding: 0 8rpx 20rpx;
+}
+
+.cal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.cal-nav {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  color: #8a8f99;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cal-nav-hover {
+  background: #f2f3f5;
+  color: #1a1a1a;
+}
+
+.cal-week {
+  display: flex;
+  padding-bottom: 8rpx;
+}
+
+.cal-week-cell {
+  width: 14.2857%;
+  text-align: center;
+  font-size: 22rpx;
+  color: #b6bac1;
+}
+
+.cal-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.cal-cell {
+  width: 14.2857%;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 上/下月补的空位，不参与点击 */
+.cal-cell.is-blank {
+  pointer-events: none;
+}
+
+.cal-day {
+  position: relative;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #1a1a1a;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+/* 各状态底色 */
+.cal-cell.k-full .cal-day {
+  background: #d6f3e4;
+  color: #0a7a42;
+  font-weight: 600;
+}
+
+.cal-cell.k-part .cal-day {
+  background: #f1efe8;
+  color: #5f5e5a;
+}
+
+.cal-cell.k-miss .cal-day {
+  background: #fcebeb;
+  color: #a32d2d;
+}
+
+.cal-cell.k-rest .cal-day {
+  background: #e6f1fb;
+  color: #185fa5;
+}
+
+.cal-cell.k-makeup .cal-day {
+  background: #faeeda;
+  color: #854f0b;
+}
+
+/* 假期里也做完了，加一圈绿 */
+.cal-cell.is-restfull .cal-day {
+  box-shadow: 0 0 0 2rpx #9fe1cb;
+}
+
+/* 未来的日子压淡 */
+.cal-cell.is-future .cal-day {
+  color: #c9ccd2;
+}
+
+.cal-cell.is-future.k-full .cal-day,
+.cal-cell.is-future.k-part .cal-day,
+.cal-cell.is-future.k-miss .cal-day,
+.cal-cell.is-future.k-rest .cal-day,
+.cal-cell.is-future.k-makeup .cal-day {
+  color: #c9ccd2;
+}
+
+/* 今天：数字加粗，配合下面那个小绿点 */
+.cal-cell.is-today .cal-day {
+  font-weight: 600;
+}
+
+/* 今天：数字下面点一个小点 */
+.today-dot {
+  position: absolute;
+  bottom: -10rpx;
+  left: 50%;
+  margin-left: -4rpx;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #07c160;
+}
+
+/* 选中：描一圈 */
+.cal-cell.is-selected .cal-day {
+  box-shadow: 0 0 0 3rpx #07c160;
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid #f2f3f5;
+}
+
+.lg {
+  display: flex;
+  align-items: center;
+  margin: 6rpx 14rpx;
+}
+
+.lg-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 6rpx;
+  margin-right: 8rpx;
+}
+
+.lg-full { background: #d6f3e4; }
+.lg-part { background: #f1efe8; }
+.lg-miss { background: #fcebeb; }
+.lg-rest { background: #e6f1fb; }
+.lg-makeup { background: #faeeda; }
+
+.lg-text {
+  font-size: 22rpx;
+  color: #8a8f99;
+}
+
+.cal-note {
+  margin-top: 16rpx;
+  font-size: 21rpx;
+  line-height: 1.6;
+  color: #a9aeb6;
+  text-align: center;
+}
+
+/* ---------- 选中那天的详情 ---------- */
+
+.detail-card {
+  margin-top: 24rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+  animation: detailIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+}
+
+.detail-date {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.detail-status {
+  margin-left: auto;
+  padding: 8rpx 20rpx;
+  border-radius: 100rpx;
+  font-size: 23rpx;
+}
+
+.st-full { background: #e7f7ee; color: #07a552; }
+.st-part { background: #f2f3f5; color: #8a8f99; }
+.st-miss { background: #fcebeb; color: #a32d2d; }
+.st-rest { background: #eef4ff; color: #4a6fa5; }
+.st-makeup { background: #fdf3e3; color: #ba7517; }
+
+.detail-label {
+  margin: 32rpx 0 16rpx;
+  font-size: 23rpx;
+  color: #a9aeb6;
+}
+
+.detail-empty {
+  padding: 20rpx 0;
+  font-size: 26rpx;
+  color: #b6bac1;
+}
+
+.dtask {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+}
+
+.dtask-mark {
+  width: 26rpx;
+  height: 26rpx;
+  flex-shrink: 0;
+  margin-right: 18rpx;
+  border-radius: 50%;
+  border: 2rpx solid #d5d8dd;
+}
+
+.dtask-mark.on {
+  background: #07c160;
+  border-color: #07c160;
+}
+
+.dtask-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dtask-text.done {
+  color: #b6bac1;
+  text-decoration: line-through;
+}
+
+.reward-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.reward {
+  margin: 0 14rpx 14rpx 0;
+  padding: 10rpx 22rpx;
+  border-radius: 100rpx;
+  font-size: 24rpx;
+}
+
+.rw-full { background: #e7f7ee; color: #07a552; }
+.rw-points { background: #faeeda; color: #854f0b; }
+.rw-makeup { background: #fdf3e3; color: #ba7517; }
+.rw-rest { background: #eef4ff; color: #4a6fa5; }
+
+.makeup-btn {
+  margin-top: 28rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  border: 2rpx solid #07c160;
+  color: #07a552;
+  font-size: 27rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.makeup-hover {
+  background: #e7f7ee;
+}
+
+/* ---------- 统计卡 ---------- */
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  margin-top: 24rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 36rpx 0;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+}
+
+.stat-card-second {
+  padding: 30rpx 0;
+}
+
+.stat {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 48rpx;
+  font-weight: 600;
+  color: #07c160;
+  line-height: 1.2;
+}
+
+.stat-card-second .stat-num {
+  font-size: 40rpx;
+}
+
+.stat-num-amber {
+  color: #ba7517;
+}
+
+.stat-num-plain {
+  color: #5f5e5a;
+}
+
+.stat-label {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.divider {
+  width: 2rpx;
+  height: 56rpx;
+  background: #eef0f3;
+}
+
+.summary {
+  margin-top: 20rpx;
+  padding: 0 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #8a8f99;
+}
+
+/* ---------- 成就 ---------- */
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  margin: 44rpx 8rpx 20rpx;
+  font-size: 26rpx;
+  color: #8a8f99;
+}
+
+.section-extra {
+  margin-left: auto;
+  font-size: 23rpx;
+  color: #b6bac1;
+}
+
+.ach-card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+}
+
+.ach-hint {
+  margin-bottom: 28rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #a9aeb6;
+}
+
+.ach-row {
+  margin-bottom: 32rpx;
+}
+
+.ach-row:last-child {
+  margin-bottom: 0;
+}
+
+.ach-head {
+  display: flex;
+  align-items: baseline;
+}
+
+.ach-label {
+  font-size: 26rpx;
+  color: #5f5e5a;
+}
+
+.ach-current {
+  margin-left: auto;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.ach-unit {
+  margin-left: 4rpx;
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #8a8f99;
+}
+
+.ach-next {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #a9aeb6;
+}
+
+.ach-chips {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 16rpx;
+}
+
+.ach-chip {
+  margin: 0 12rpx 12rpx 0;
+  padding: 8rpx 20rpx;
+  border-radius: 100rpx;
+  font-size: 23rpx;
+  background: #f7f8fa;
+  color: #b6bac1;
+}
+
+.ach-chip-done {
+  background: #e7f7ee;
+  color: #07a552;
+}
+
+.ach-chip-next {
+  background: #ffffff;
+  color: #576b95;
+  border: 2rpx solid #d6e3fb;
+}
+
+/* ---------- 底部 ---------- */
+
+.links {
+  margin-top: 40rpx;
+  text-align: center;
+}
+
+.link {
+  display: inline-block;
+  font-size: 26rpx;
+  color: #576b95;
+}
+
+.danger {
+  margin-top: 32rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #b6bac1;
+}
+
+@keyframes detailIn {
+  from { opacity: 0; transform: translateY(14rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}

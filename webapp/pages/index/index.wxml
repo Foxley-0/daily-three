@@ -1,0 +1,103 @@
+<view class="page {{tabAnim}}">
+
+  <view class="head">
+    <view class="greet" wx:if="{{profileName}}">嗨，{{profileName}}</view>
+    <view class="date">{{dateLabel}}</view>
+    <view class="weekday">{{weekday}}</view>
+    <view class="late-night" wx:if="{{lateNight}}">已过零点 · 还没到 {{dayStartHour}} 点，写的任务仍算这一天</view>
+  </view>
+
+  <view class="card {{celebrating ? 'card-celebrate' : ''}}">
+
+    <view class="rest-banner" wx:if="{{rest}}">
+      <view class="rest-dot"></view>
+      <text class="rest-text">{{restName}} · 假期中，不记录也不断签</text>
+    </view>
+
+    <view class="burst" wx:if="{{celebrating}}">
+      <view class="dot dot1"></view>
+      <view class="dot dot2"></view>
+      <view class="dot dot3"></view>
+      <view class="dot dot4"></view>
+      <view class="dot dot5"></view>
+      <view class="dot dot6"></view>
+    </view>
+
+    <view class="progress-row">
+      <view class="progress-num {{numAnim ? 'num-anim' : ''}}">{{progressText}}</view>
+      <view class="progress-label">已完成</view>
+      <view class="chip" wx:if="{{celebrating}}">全部完成</view>
+    </view>
+
+    <view class="bar">
+      <view class="bar-inner {{celebrating ? 'bar-glow' : ''}}" style="width:{{percent}}%"></view>
+    </view>
+
+    <view class="tip">{{tipText}}</view>
+  </view>
+
+  <view class="list">
+    <view class="task {{stagger ? 'task-stagger' : ''}} {{item.id === enteringId ? 'task-enter' : ''}} {{item.id === leavingId ? 'task-leave' : ''}}"
+          style="animation-delay:{{stagger ? index * 45 : 0}}ms"
+          wx:for="{{tasks}}"
+          wx:key="id">
+
+      <view class="check {{item.done ? 'check-on' : ''}}"
+            hover-class="check-hover"
+            hover-stay-time="60"
+            data-index="{{index}}"
+            bindtap="toggleTask">
+        <view class="tick" wx:if="{{item.done}}"></view>
+        <view class="ripple" wx:if="{{item.done}}"></view>
+      </view>
+
+      <block wx:if="{{item.done}}">
+        <view class="task-main">
+          <view class="task-text-wrap">
+            <text class="task-text">{{item.text}}</text>
+            <view class="strike"></view>
+          </view>
+        </view>
+      </block>
+
+      <input wx:else
+             class="task-input"
+             value="{{item.text}}"
+             data-index="{{index}}"
+             bindinput="onTaskInput"
+             placeholder="写一件今天要做的事"
+             placeholder-class="ph"
+             maxlength="40"
+             confirm-type="done" />
+
+      <view class="del" wx:if="{{canDelete}}" data-index="{{index}}" catchtap="removeTask">×</view>
+
+    </view>
+  </view>
+
+  <view class="add" bindtap="addTask" hover-class="add-hover" hover-stay-time="60">＋ 添加任务</view>
+
+</view>
+
+<!-- 第一次进来先起个名字 -->
+<view class="name-mask" wx:if="{{showNameSetup}}">
+  <view class="name-card">
+    <view class="name-emoji">
+      <view class="ne-circle"></view>
+      <view class="ne-check"></view>
+    </view>
+    <view class="name-title">给自己起个名字</view>
+    <view class="name-sub">只保存在这台手机上，不需要密码，随时可以改。</view>
+    <input class="name-input"
+           value="{{nameInput}}"
+           bindinput="onNameInput"
+           bindconfirm="submitName"
+           placeholder="比如：小明"
+           placeholder-class="name-ph"
+           maxlength="12"
+           confirm-type="done"
+           focus="{{showNameSetup}}" />
+    <view class="name-btn {{nameInput ? '' : 'name-btn-off'}}" bindtap="submitName">开始</view>
+    <view class="name-skip" bindtap="skipName" hover-class="name-skip-hover" hover-stay-time="60">先跳过，直接用</view>
+  </view>
+</view>

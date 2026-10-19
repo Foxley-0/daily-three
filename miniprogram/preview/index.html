@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>每日三件事 · 网页预览</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #e9f7f1 0%, #f2f6f6 150px, #f4f6f8 100%) fixed;
+    color: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 28px 16px 170px; }
+
+  /* 各级页面的进入过渡（类名用 dir- 前缀，别和返回按钮的 nav-back 撞车） */
+  .screen.dir-forward { animation: navIn .32s cubic-bezier(.22,1,.36,1) both; }
+  .screen.dir-back { animation: navBack .32s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes navIn { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes navBack { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: translateX(0); } }
+  .banner {
+    margin-bottom: 22px; padding: 12px 14px;
+    background: #eef4ff; border: 1px solid #d6e3fb; border-radius: 10px;
+    font-size: 12px; color: #4a6fa5; line-height: 1.6;
+  }
+
+  .head { padding: 0 4px 22px; }
+  .date { font-size: 28px; font-weight: 600; letter-spacing: 0.5px; }
+  .weekday { margin-top: 4px; font-size: 13px; color: #8a8f99; }
+
+  .card { position: relative; overflow: hidden; background: #fff; border-radius: 12px; padding: 18px 16px 16px; }
+  .rest-banner { display: flex; align-items: center; margin-bottom: 12px; padding: 7px 10px; border-radius: 8px; background: #eef4ff; }
+  .rest-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: #185fa5; margin-right: 7px; }
+  .rest-text { font-size: 12px; color: #4a6fa5; }
+
+  /* 卡片统一投影，让层次比纯平底清楚一点 */
+  .card, .task, .stat-card, .ach-card, .rec, .form-card, .cal-card { box-shadow: 0 2px 12px rgba(31, 45, 61, .05); }
+
+  /* ---------- 二级页的返回栏 ---------- */
+  .navbar {
+    display: flex; align-items: center; margin-bottom: 14px; padding: 4px 6px;
+    background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(31, 45, 61, .05);
+  }
+  .nav-back {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background .15s;
+  }
+  .nav-back:hover { background: rgba(31, 45, 61, .06); }
+  .nav-arrow {
+    width: 10px; height: 10px; margin-left: 4px;
+    border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
+    border-radius: 1px; transform: rotate(45deg);
+  }
+  .nav-title { flex: 1; text-align: center; font-size: 16px; font-weight: 600; }
+  .nav-ghost { visibility: hidden; }
+
+  /* ---------- 月历 ---------- */
+  .cal-card { background: #fff; border-radius: 14px; padding: 16px 12px 12px; }
+  .cal-head { display: flex; align-items: center; padding: 0 4px 10px; }
+  .cal-title { flex: 1; text-align: center; font-size: 16px; font-weight: 600; letter-spacing: .5px; }
+  .cal-nav {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #8a8f99; line-height: 1; cursor: pointer; user-select: none;
+    transition: background .15s, color .15s;
+  }
+  .cal-nav:hover { background: #f2f3f5; color: #1a1a1a; }
+  .cal-week { display: flex; padding-bottom: 4px; }
+  .cal-week-cell { width: 14.2857%; text-align: center; font-size: 11px; color: #b6bac1; }
+  .cal-grid { display: flex; flex-wrap: wrap; }
+  .cal-cell { width: 14.2857%; height: 46px; display: flex; align-items: center; justify-content: center; }
+  /* 上/下月补的空位，不参与点击 */
+  .cal-cell.is-blank { pointer-events: none; }
+  .cal-day {
+    width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #1a1a1a; transition: background .15s, box-shadow .15s;
+  }
+  .cal-cell[data-act]:not(.is-blank) { cursor: pointer; }
+  .cal-cell.is-selected .cal-day { background: #e7f7ee; }
+  .cal-cell.kind-builtin .cal-day { background: #e6f1fb; color: #185fa5; font-weight: 500; }
+  .cal-cell.kind-custom .cal-day { background: #faeeda; color: #854f0b; font-weight: 500; }
+  .cal-cell.is-past.kind-normal .cal-day { color: #c9ccd2; }
+  .cal-cell.is-today .cal-day { box-shadow: 0 0 0 1.5px #07c160; color: #07a552; font-weight: 600; }
+  .cal-cell.is-today.kind-builtin .cal-day { color: #185fa5; }
+  .cal-cell.is-today.kind-custom .cal-day { color: #854f0b; }
+  .cal-legend { display: flex; justify-content: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f2f3f5; }
+  .lg { display: flex; align-items: center; margin: 0 9px; }
+  .lg-dot { width: 8px; height: 8px; border-radius: 3px; margin-right: 5px; }
+  .lg-builtin { background: #e6f1fb; border: 1px solid #b5d4f4; }
+  .lg-custom { background: #faeeda; border: 1px solid #efc98b; }
+  .lg-today { background: #fff; border: 1.5px solid #07c160; }
+  .lg-text { font-size: 11px; color: #8a8f99; }
+  .cal-note { margin-top: 9px; font-size: 11px; line-height: 1.6; color: #a9aeb6; text-align: center; }
+
+  /* ---------- 深夜提示 ---------- */
+  .late-night {
+    display: inline-block; margin-top: 9px; padding: 5px 10px; border-radius: 50px;
+    background: #eef4ff; font-size: 11px; color: #4a6fa5;
+  }
+
+  /* ---------- 设置页 ---------- */
+  .acct {
+    display: flex; align-items: center; padding: 12px 0;
+    border-bottom: 1px solid #f2f3f5; cursor: pointer; transition: opacity .15s;
+  }
+  .acct:last-child { border-bottom: none; }
+  /* 添加账号那一行，和上面的账号列表拉开一点 */
+  .acct-add { margin-top: 3px; }
+  .acct:hover { opacity: .6; }
+  .acct-on .acct-name { color: #07a552; }
+  .avatar {
+    width: 36px; height: 36px; flex-shrink: 0; margin-right: 11px; border-radius: 50%;
+    background: #07c160; color: #fff; font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .avatar-add { background: #eef0f3; color: #8a8f99; font-size: 17px; font-weight: 400; }
+  .acct-main { flex: 1; min-width: 0; }
+  .acct-name { font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acct-name-add { color: #576b95; }
+  .acct-sub { margin-top: 3px; font-size: 11px; color: #a9aeb6; }
+  .acct-badge {
+    margin-left: 6px; padding: 2px 7px; border-radius: 50px;
+    background: #e7f7ee; color: #07a552; font-size: 10px; vertical-align: middle;
+  }
+  .acct-del {
+    flex-shrink: 0; margin-left: 8px; padding: 5px 11px; border-radius: 50px;
+    background: #f7f8fa; font-size: 11.5px; color: #a9aeb6; transition: color .15s, background .15s;
+  }
+  .acct-del:hover { color: #e64340; background: #fdeceb; }
+
+  .group-title { margin: 18px 4px 7px; font-size: 12.5px; color: #8a8f99; }
+  .group-note { margin: 7px 4px 0; font-size: 11px; line-height: 1.65; color: #a9aeb6; }
+
+  .card.pad-0 { padding: 0 16px; }
+  .row { display: flex; align-items: center; height: 55px; border-bottom: 1px solid #f2f3f5; }
+  .row:last-child { border-bottom: none; }
+  .row[data-act] { cursor: pointer; transition: opacity .15s; }
+  .row[data-act]:hover { opacity: .55; }
+  .row-ic { position: relative; width: 28px; height: 28px; flex-shrink: 0; margin-right: 11px; border-radius: 8px; }
+  .ic-clock { background: #f0a020; }
+  .ic-list { background: #07c160; }
+  .ic-card { background: #7f77dd; }
+  .ic-cal { background: #378add; }
+  .row-title { flex: 1; min-width: 0; font-size: 15px; }
+  .row-value { flex-shrink: 0; font-size: 14px; color: #8a8f99; }
+  .chev { flex-shrink: 0; margin-left: 6px; font-size: 16px; line-height: 1; color: #c9ccd2; }
+
+  /* ---------- 底部弹出选择器（替掉浏览器原生 select） ---------- */
+  .sheet-mask {
+    position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 900;
+    background: rgba(20, 28, 38, .45);
+    display: flex; align-items: flex-end;
+    animation: maskIn .2s ease both;
+  }
+  .sheet {
+    width: 100%; background: #fff; border-radius: 16px 16px 0 0;
+    padding-bottom: 10px;
+    animation: sheetUp .28s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet-title {
+    padding: 15px 16px; text-align: center; font-size: 13px; color: #8a8f99;
+    border-bottom: 1px solid #f2f3f5;
+  }
+  .sheet-list { max-height: 300px; overflow-y: auto; padding: 6px 0; }
+  .sheet-item {
+    position: relative; padding: 13px 44px; text-align: center;
+    font-size: 16px; color: #1a1a1a; cursor: pointer; transition: background .12s;
+  }
+  .sheet-item:hover { background: #f7f8fa; }
+  .sheet-item.on { color: #07a552; font-weight: 600; }
+  .sheet-check {
+    position: absolute; right: 20px; top: 50%; width: 11px; height: 6px;
+    margin-top: -5px; border-left: 2px solid #07c160; border-bottom: 2px solid #07c160;
+    transform: rotate(-45deg);
+  }
+
+  /* ---------- 页面内对话框 ----------
+     替掉原生 alert / prompt / confirm —— 预览面板是沙箱 iframe，
+     那三个 API 被浏览器禁用，调用会静默失效（按钮点了没反应）。 */
+  .dlg-mask {
+    position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1000;
+    background: rgba(20, 28, 38, .45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 32px;
+    animation: maskIn .2s ease both;
+  }
+  .dlg {
+    width: 100%; max-width: 320px; background: #fff; border-radius: 14px;
+    padding: 22px 18px 16px;
+    animation: cardPop .3s cubic-bezier(.34,1.4,.64,1) both;
+  }
+  .dlg-title { text-align: center; font-size: 16px; font-weight: 600; }
+  .dlg-text { margin-top: 10px; text-align: center; font-size: 13px; line-height: 1.6; color: #8a8f99; }
+  .dlg-input {
+    margin-top: 16px; width: 100%; height: 42px; padding: 0 12px; box-sizing: border-box;
+    background: #f5f6f8; border: 0; outline: none; border-radius: 9px;
+    font-size: 15px; text-align: center; font-family: inherit; color: #1a1a1a;
+  }
+  .dlg-input::placeholder { color: #c3c7cd; }
+  .dlg-err { margin-top: 8px; text-align: center; font-size: 12px; color: #e64340; }
+  .dlg-btns { display: flex; gap: 10px; margin-top: 18px; }
+  .dlg-btn {
+    flex: 1; height: 42px; border-radius: 9px; display: flex; align-items: center;
+    justify-content: center; font-size: 15px; cursor: pointer;
+    background: #f5f6f8; color: #5f5e5a; transition: background .15s;
+  }
+  .dlg-btn:hover { background: #eef0f3; }
+  .dlg-btn-ok { background: #07c160; color: #fff; }
+  .dlg-btn-ok:hover { background: #06ad56; }
+  .dlg-btn-danger { background: #e64340; }
+  .dlg-btn-danger:hover { background: #d33a37; }
+
+  /* 图标里的白色图形（s- 前缀，避免和底部导航的 g- 类名撞车） */
+  .s-ring {
+    position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+    border: 2px solid #fff; border-radius: 50%; box-sizing: border-box;
+  }
+  .s-hand-v { position: absolute; left: 50%; top: 50%; width: 2px; height: 5px; margin: -5px 0 0 -1px; border-radius: 1px; background: #fff; }
+  .s-hand-h { position: absolute; left: 50%; top: 50%; width: 5px; height: 2px; margin: -1px 0 0 0; border-radius: 1px; background: #fff; }
+  .s-line { position: absolute; left: 50%; top: 50%; height: 2px; margin-left: -6.5px; border-radius: 1px; background: #fff; }
+  .s-l1 { margin-top: -6px; width: 13px; }
+  .s-l2 { margin-top: -1px; width: 10px; }
+  .s-l3 { margin-top: 4px; width: 7px; }
+  .s-card {
+    position: absolute; left: 50%; top: 50%; width: 16px; height: 12px; margin: -6px 0 0 -8px;
+    border: 2px solid #fff; border-radius: 3px; box-sizing: border-box;
+  }
+  .s-cal {
+    position: absolute; left: 50%; top: 50%; width: 16px; height: 15px; margin: -7.5px 0 0 -8px;
+    border: 2px solid #fff; border-radius: 3px; box-sizing: border-box;
+  }
+  .s-cal-bar { position: absolute; left: 50%; top: 50%; width: 16px; height: 2px; margin: -5.5px 0 0 -8px; background: #fff; }
+
+  .info-row { display: flex; align-items: baseline; padding: 12px 0; border-bottom: 1px solid #f2f3f5; }
+  .info-last { border-bottom: none; }
+  .info-label { font-size: 14px; color: #8a8f99; }
+  .info-value { margin-left: auto; font-size: 14px; }
+  .info-strong { font-size: 16px; font-weight: 600; color: #07a552; }
+
+  /* ---------- 第一次进来：起名字 ---------- */
+  .greet { margin-bottom: 5px; font-size: 13px; color: #07a552; }
+  .name-mask {
+    position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 999;
+    padding: 0 32px; background: rgba(20, 28, 38, .45);
+    display: flex; align-items: center; justify-content: center;
+    animation: maskIn .24s ease both;
+  }
+  .name-card {
+    width: 100%; padding: 28px 22px 20px; background: #fff; border-radius: 16px;
+    animation: cardPop .38s cubic-bezier(.34,1.4,.64,1) both;
+  }
+  .name-emoji { position: relative; width: 48px; height: 48px; margin: 0 auto 15px; }
+  .ne-circle {
+    position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+    border-radius: 50%; background: #07c160;
+  }
+  .ne-check {
+    position: absolute; left: 50%; top: 50%; width: 19px; height: 10px; margin: -5px 0 0 -9.5px;
+    border-left: 4px solid #fff; border-bottom: 4px solid #fff; border-radius: 1.5px;
+    transform: rotate(-45deg);
+  }
+  .name-title { text-align: center; font-size: 18px; font-weight: 600; }
+  .name-sub { margin-top: 7px; text-align: center; font-size: 12px; line-height: 1.6; color: #8a8f99; }
+  .name-input {
+    margin-top: 19px; height: 48px; padding: 0 14px; width: 100%;
+    background: #f5f6f8; border: 0; outline: none; border-radius: 10px;
+    font-size: 15px; text-align: center; font-family: inherit; color: #1a1a1a;
+    box-sizing: border-box;
+  }
+  .name-input::placeholder { color: #c3c7cd; }
+  .name-btn {
+    margin-top: 14px; height: 46px; border-radius: 10px; background: #07c160; color: #fff;
+    font-size: 15.5px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background .18s;
+  }
+  .name-btn:hover { background: #06ad56; }
+  .name-btn-off { background: #c8e9d6; }
+  .name-skip {
+    margin-top: 12px; padding: 6px 0; text-align: center;
+    font-size: 13px; color: #a9aeb6; cursor: pointer; transition: color .15s;
+  }
+  .name-skip:hover { color: #576b95; }
+  @keyframes maskIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cardPop { from { opacity: 0; transform: scale(.9) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+  /* 打卡记录页的日历：按当天状态着色 */
+  .cal-cell.k-full .cal-day { background: #d6f3e4; color: #0a7a42; font-weight: 600; }
+  .cal-cell.k-part .cal-day { background: #f1efe8; color: #5f5e5a; }
+  .cal-cell.k-miss .cal-day { background: #fcebeb; color: #a32d2d; }
+  .cal-cell.k-rest .cal-day { background: #e6f1fb; color: #185fa5; }
+  .cal-cell.k-makeup .cal-day { background: #faeeda; color: #854f0b; }
+  .cal-cell.is-restfull .cal-day { box-shadow: 0 0 0 1px #9fe1cb; }
+  .cal-cell.is-future .cal-day { color: #c9ccd2; }
+  .cal-cell.is-selected .cal-day { box-shadow: 0 0 0 1.5px #07c160; }
+  .today-dot {
+    position: absolute; bottom: -5px; left: 50%; margin-left: -2px;
+    width: 4px; height: 4px; border-radius: 50%; background: #07c160;
+  }
+  .cal-day { position: relative; }
+  .lg-full { background: #d6f3e4; }
+  .lg-part { background: #f1efe8; }
+  .lg-miss { background: #fcebeb; }
+  .lg-rest { background: #e6f1fb; }
+  .lg-makeup { background: #faeeda; }
+  .cal-legend { flex-wrap: wrap; }
+  .lg { margin: 3px 7px; }
+
+  /* ---------- 选中那天的详情 ---------- */
+  .detail-card {
+    margin-top: 12px; background: #fff; border-radius: 14px; padding: 16px;
+    box-shadow: 0 2px 12px rgba(31, 45, 61, .05);
+    animation: detailIn .3s cubic-bezier(.22,1,.36,1) both;
+  }
+  .detail-head { display: flex; align-items: center; }
+  .detail-date { font-size: 16px; font-weight: 600; }
+  .detail-status { margin-left: auto; padding: 4px 10px; border-radius: 50px; font-size: 12px; }
+  .st-full { background: #e7f7ee; color: #07a552; }
+  .st-part { background: #f2f3f5; color: #8a8f99; }
+  .st-miss { background: #fcebeb; color: #a32d2d; }
+  .st-rest { background: #eef4ff; color: #4a6fa5; }
+  .st-makeup { background: #fdf3e3; color: #ba7517; }
+  .detail-label { margin: 16px 0 8px; font-size: 12px; color: #a9aeb6; }
+  .detail-empty { padding: 10px 0; font-size: 13px; color: #b6bac1; }
+  .dtask { display: flex; align-items: center; padding: 6px 0; }
+  .dtask-mark { width: 13px; height: 13px; flex-shrink: 0; margin-right: 9px; border-radius: 50%; border: 1px solid #d5d8dd; }
+  .dtask-mark.on { background: #07c160; border-color: #07c160; }
+  .dtask-text { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dtask-text.done { color: #b6bac1; text-decoration: line-through; }
+  .reward-row { display: flex; flex-wrap: wrap; }
+  .reward { margin: 0 7px 7px 0; padding: 5px 11px; border-radius: 50px; font-size: 12px; }
+  .rw-full { background: #e7f7ee; color: #07a552; }
+  .rw-points { background: #faeeda; color: #854f0b; }
+  .rw-makeup { background: #fdf3e3; color: #ba7517; }
+  .rw-rest { background: #eef4ff; color: #4a6fa5; }
+  .makeup-btn {
+    margin-top: 14px; height: 40px; border-radius: 10px; border: 1px solid #07c160; color: #07a552;
+    font-size: 13.5px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background .15s;
+  }
+  .makeup-btn:hover { background: #e7f7ee; }
+  @keyframes detailIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+
+  .progress-row { display: flex; align-items: baseline; }
+  .progress-num { font-size: 23px; font-weight: 600; color: #07c160; line-height: 1; }
+  .progress-label { margin-left: 7px; font-size: 12px; color: #8a8f99; }
+  .chip {
+    margin-left: auto; padding: 3px 9px; border-radius: 50px;
+    background: #e7f7ee; color: #07a552; font-size: 11px;
+    animation: chipIn .42s cubic-bezier(.34,1.56,.64,1) .12s both;
+  }
+  .bar { margin-top: 13px; height: 6px; border-radius: 3px; background: #eef0f3; overflow: hidden; }
+  .bar-inner { height: 100%; border-radius: 3px; background: #07c160; transition: width .35s cubic-bezier(.22,1,.36,1); }
+  .tip { margin-top: 11px; font-size: 12px; color: #8a8f99; }
+
+  .burst { position: absolute; left: 55px; top: 29px; width: 0; height: 0; }
+  .dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; }
+  .dot1 { background: #07c160; animation: burst1 .9s ease-out forwards; }
+  .dot2 { background: #34d27b; animation: burst2 .9s ease-out forwards; }
+  .dot3 { background: #ffd166; animation: burst3 .9s ease-out forwards; }
+  .dot4 { background: #07c160; animation: burst4 .9s ease-out forwards; }
+  .dot5 { background: #34d27b; animation: burst5 .9s ease-out forwards; }
+  .dot6 { background: #ffd166; animation: burst6 .9s ease-out forwards; }
+
+  .list { margin-top: 14px; }
+  .task { display: flex; align-items: center; background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+
+  .check {
+    position: relative; width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%;
+    border: 1px solid #d5d8dd; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background .15s, border-color .15s, transform .15s;
+  }
+  .check:hover { transform: scale(.9); }
+  .check.on { background: #07c160; border-color: #07c160; }
+  .check.on.anim-pop { animation: checkPop .36s cubic-bezier(.34,1.56,.64,1); }
+  .tick { width: 10px; height: 5px; margin-top: -3px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg); }
+  .check.on.anim-pop .tick { animation: tickIn .24s cubic-bezier(.34,1.56,.64,1) .06s both; }
+  .ripple { position: absolute; left: -1px; top: -1px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #07c160; opacity: 0; }
+  .ripple.anim-ripple { animation: rippleOut .5s ease-out .02s; }
+
+  .task-main { flex: 1; min-width: 0; margin: 0 10px; overflow: hidden; }
+  .task-text-wrap { position: relative; display: inline-block; max-width: 100%; vertical-align: middle; }
+  .task-text {
+    display: block; max-width: 100%; font-size: 15px; line-height: 22px; color: #b6bac1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; animation: textFade .3s ease both;
+  }
+  .strike { position: absolute; left: 0; top: 50%; height: 1px; width: 100%; background: #b6bac1; }
+  .strike.anim-strike { animation: strikeIn .3s ease .06s; }
+
+  .task-input {
+    flex: 1; min-width: 0; margin: 0 10px; border: 0; outline: none;
+    background: transparent; font-size: 15px; color: #1a1a1a;
+    font-family: inherit; padding: 0; height: 22px;
+  }
+  .task-input::placeholder { color: #c3c7cd; }
+  .del {
+    width: 24px; height: 24px; flex-shrink: 0; line-height: 22px; text-align: center;
+    font-size: 20px; color: #c3c7cd; cursor: pointer; transition: color .15s;
+  }
+  .del:hover { color: #e64340; }
+
+  .add {
+    margin-top: 4px; height: 48px; border-radius: 12px;
+    border: 1px dashed #d5d8dd; background: #fff; color: #576b95;
+    font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: transform .15s, border-color .15s;
+  }
+  .add:hover { transform: scale(.985); border-color: #b9c2cf; }
+
+  .links { margin-top: 24px; display: flex; justify-content: center; gap: 28px; }
+  .link { font-size: 13px; color: #8a8f99; cursor: pointer; transition: color .15s; }
+  .link:hover { color: #576b95; }
+
+  .stat-card { display: flex; align-items: center; background: #fff; border-radius: 12px; padding: 20px 0; }
+  .stat-card.second { margin-top: 10px; padding: 16px 0; }
+  .stat { flex: 1; text-align: center; }
+  .stat-num { font-size: 24px; font-weight: 600; color: #07c160; line-height: 1.2; }
+  .stat-card.second .stat-num { font-size: 20px; }
+  .stat-num.amber { color: #ba7517; }
+  .stat-num.plain { color: #5f5e5a; }
+  .stat-label { margin-top: 6px; font-size: 12px; color: #8a8f99; }
+  .divider { width: 1px; height: 28px; background: #eef0f3; }
+  .summary { margin-top: 10px; padding: 0 4px; font-size: 12px; line-height: 1.6; color: #8a8f99; }
+  .section-title { display: flex; align-items: baseline; margin: 22px 4px 10px; font-size: 13px; color: #8a8f99; }
+  .section-extra { margin-left: auto; font-size: 12px; color: #b6bac1; }
+
+  .ach-card { background: #fff; border-radius: 12px; padding: 16px; }
+  .ach-hint { margin-bottom: 14px; font-size: 11px; line-height: 1.6; color: #a9aeb6; }
+  .ach-row { margin-bottom: 16px; }
+  .ach-row:last-child { margin-bottom: 0; }
+  .ach-head { display: flex; align-items: baseline; }
+  .ach-label { font-size: 13px; color: #5f5e5a; }
+  .ach-current { margin-left: auto; font-size: 15px; font-weight: 600; }
+  .ach-unit { margin-left: 2px; font-size: 11px; font-weight: 400; color: #8a8f99; }
+  .ach-next { margin-top: 4px; font-size: 11px; color: #a9aeb6; }
+  .ach-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .ach-chip { padding: 4px 10px; border-radius: 50px; font-size: 12px; background: #f7f8fa; color: #b6bac1; }
+  .ach-chip.done { background: #e7f7ee; color: #07a552; }
+  .ach-chip.next { background: #fff; color: #576b95; border: 1px solid #d6e3fb; }
+
+  .empty { background: #fff; border-radius: 12px; padding: 30px 16px; text-align: center; font-size: 13px; color: #a9aeb6; }
+  .rec { display: flex; align-items: center; background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .rec-left { flex: 1; min-width: 0; }
+  .rec-date { font-size: 15px; }
+  .rec-sub { margin-top: 4px; font-size: 12px; color: #8a8f99; }
+  .rec.dim .rec-date { color: #a9aeb6; }
+  .rec.dim .rec-sub { color: #c3c7cd; }
+  .rec-right { display: flex; align-items: center; flex-shrink: 0; }
+  .badge { padding: 4px 10px; border-radius: 50px; font-size: 12px; }
+  .badge.full { background: #e7f7ee; color: #07a552; }
+  .badge.part { background: #f2f3f5; color: #8a8f99; }
+  .badge.blank { background: transparent; color: #c3c7cd; padding-left: 0; padding-right: 0; }
+  .badge.rest { background: #eef4ff; color: #4a6fa5; }
+  .badge.makeup { background: #fdf3e3; color: #ba7517; }
+  .makeup-btn {
+    margin-left: 8px; padding: 4px 11px; border-radius: 50px;
+    border: 1px solid #07c160; color: #07a552; font-size: 12px; cursor: pointer; transition: background .15s;
+  }
+  .makeup-btn:hover { background: #e7f7ee; }
+
+  .tip-box { padding: 12px 14px; background: #eef4ff; border-radius: 10px; font-size: 12px; line-height: 1.7; color: #4a6fa5; }
+  .form-card { margin-top: 12px; background: #fff; border-radius: 12px; padding: 16px; }
+  .form-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .field { display: flex; align-items: center; height: 48px; border-bottom: 1px solid #f2f3f5; }
+  .field label { width: 55px; flex-shrink: 0; font-size: 14px; color: #8a8f99; }
+  .field input {
+    flex: 1; border: 0; outline: none; background: transparent;
+    font-size: 15px; color: #1a1a1a; font-family: inherit; min-width: 0;
+  }
+  .field input::placeholder { color: #c3c7cd; }
+  .days { margin-top: 10px; font-size: 12px; color: #8a8f99; }
+  .submit {
+    margin-top: 14px; height: 44px; border-radius: 10px; background: #07c160; color: #fff;
+    font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: transform .15s, background .15s;
+  }
+  .submit:hover { transform: scale(.985); background: #06ad56; }
+  .hint { margin-top: 10px; font-size: 11px; line-height: 1.6; color: #a9aeb6; }
+  .coverage { margin: -4px 4px 9px; font-size: 11px; line-height: 1.6; color: #a9aeb6; }
+  .note { margin-top: 12px; padding: 0 4px; font-size: 11px; line-height: 1.7; color: #a9aeb6; }
+  .item-del {
+    flex-shrink: 0; padding: 5px 11px; border-radius: 50px; background: #f7f8fa;
+    font-size: 12px; color: #8a8f99; cursor: pointer; transition: color .15s, background .15s;
+  }
+  .item-del:hover { color: #e64340; background: #fdeceb; }
+
+  .task-stagger { animation: taskIn .36s cubic-bezier(.22,1,.36,1) both; }
+  .task-enter { overflow: hidden; animation: taskEnter .45s cubic-bezier(.33,1,.68,1) both; }
+  .task-leave { overflow: hidden; animation: taskLeave .3s cubic-bezier(.4,0,1,1) both; }
+  .num-anim { animation: numPop .34s cubic-bezier(.34,1.56,.64,1); }
+  .card.celebrate { animation: cardPulse .9s ease; }
+  .card.celebrate .bar-inner { animation: barGlow 1s ease; }
+  #app.intro .head { animation: fadeUp .36s cubic-bezier(.22,1,.36,1) both; }
+  #app.intro .card { animation: fadeUp .36s cubic-bezier(.22,1,.36,1) .05s both; }
+
+  .debug {
+    position: fixed; left: 0; right: 0; bottom: 50px;
+    background: rgba(255,255,255,.94); border-top: 1px solid #e6e8eb;
+    padding: 8px 16px; display: flex; gap: 8px; justify-content: center;
+    backdrop-filter: blur(6px);
+    z-index: 150;
+  }
+  .debug button {
+    flex: 1; height: 38px; border-radius: 8px; cursor: pointer;
+    border: 1px solid #d5d8dd; background: #fff; color: #333; font-size: 12px;
+    font-family: inherit; transition: background .15s; padding: 0 4px;
+  }
+  .debug button:hover { background: #f7f8fa; }
+  .debug button.primary { background: #07c160; border-color: #07c160; color: #fff; }
+  .debug button.primary:hover { background: #06ad56; }
+
+  /* ---------- 底部导航（图标全部用 CSS 画，不依赖图片） ---------- */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
+    display: flex; height: 50px; background: #fff; border-top: 1px solid #eef0f3;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding-top: 3px; cursor: pointer;
+    transition: transform .2s cubic-bezier(.34,1.4,.64,1);
+  }
+  .tab:active { transform: scale(.9); }
+  .tab-text { margin-top: 3px; font-size: 10px; line-height: 1; color: #8a8f99; transition: color .18s ease; }
+  .tab.on .tab-text { color: #07c160; }
+
+  /* 图标统一 22px 画布，所有形状都收在这个方框里 */
+  .ic { position: relative; width: 22px; height: 22px; }
+
+  /* 今日：实心圆 + 挖空对勾 */
+  .t-circle {
+    position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+    border-radius: 50%; background: #8a8f99; transition: background .18s ease;
+  }
+  .t-check {
+    position: absolute; left: 50%; top: 50%; width: 8.5px; height: 4.5px; margin: -2.25px 0 0 -4.25px;
+    border-left: 2px solid #fff; border-bottom: 2px solid #fff; border-radius: .5px;
+    transform: rotate(-45deg);
+  }
+
+  /* 记录：三根实心圆角柱 */
+  .c-bar {
+    position: absolute; bottom: 2.5px; width: 4.5px; border-radius: 2.25px;
+    background: #8a8f99; transition: background .18s ease;
+  }
+  .c-bar1 { left: 2.5px; height: 8px; }
+  .c-bar2 { left: 8.75px; height: 13px; }
+  .c-bar3 { left: 15px; height: 18px; }
+
+  /* 设置：圆环 + 8 颗圆角齿 */
+  .g-ring {
+    position: absolute; left: 50%; top: 50%; width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px;
+    border: 3px solid #8a8f99; border-radius: 50%; transition: border-color .18s ease;
+  }
+  .g-tooth {
+    position: absolute; left: 50%; top: 50%; width: 3.5px; height: 5.5px; margin: -2.75px 0 0 -1.75px;
+    border-radius: 1.75px; background: #8a8f99; transition: background .18s ease;
+  }
+  .g-t1 { transform: rotate(0deg) translateY(-8px); }
+  .g-t2 { transform: rotate(45deg) translateY(-8px); }
+  .g-t3 { transform: rotate(90deg) translateY(-8px); }
+  .g-t4 { transform: rotate(135deg) translateY(-8px); }
+  .g-t5 { transform: rotate(180deg) translateY(-8px); }
+  .g-t6 { transform: rotate(225deg) translateY(-8px); }
+  .g-t7 { transform: rotate(270deg) translateY(-8px); }
+  .g-t8 { transform: rotate(315deg) translateY(-8px); }
+
+  /* 选中态：只换颜色，不变尺寸 */
+  .tab.on .t-circle, .tab.on .c-bar, .tab.on .g-tooth { background: #07c160; }
+  .tab.on .g-ring { border-color: #07c160; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes taskIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes taskEnter {
+    from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; transform: translateY(7px); }
+    to { opacity: 1; max-height: 52px; padding-top: 14px; padding-bottom: 14px; margin-bottom: 10px; transform: translateY(0); }
+  }
+  @keyframes taskLeave {
+    from { opacity: 1; max-height: 52px; padding-top: 14px; padding-bottom: 14px; margin-bottom: 10px; transform: translateX(0); }
+    to { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; transform: translateX(24px); }
+  }
+  @keyframes checkPop { 0% { transform: scale(1); } 45% { transform: scale(1.28); } 100% { transform: scale(1); } }
+  @keyframes tickIn { from { transform: rotate(-45deg) scale(.2); opacity: 0; } to { transform: rotate(-45deg) scale(1); opacity: 1; } }
+  @keyframes rippleOut { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(2.1); } }
+  @keyframes strikeIn { from { width: 0; } to { width: 100%; } }
+  @keyframes textFade { from { opacity: .35; } to { opacity: 1; } }
+  @keyframes numPop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes cardPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(7,193,96,.3); }
+    35% { transform: scale(1.015); box-shadow: 0 0 0 6px rgba(7,193,96,.14); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(7,193,96,0); }
+  }
+  @keyframes barGlow { 0%, 100% { background: #07c160; } 50% { background: #34d27b; } }
+  @keyframes chipIn { from { opacity: 0; transform: translateY(-4px) scale(.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes burst1 { from { opacity: 1; transform: translate(0,0) scale(.6); } to { opacity: 0; transform: translate(-48px,-26px) scale(1); } }
+  @keyframes burst2 { from { opacity: 1; transform: translate(0,0) scale(.6); } to { opacity: 0; transform: translate(-20px,-38px) scale(1); } }
+  @keyframes burst3 { from { opacity: 1; transform: translate(0,0) scale(.6); } to { opacity: 0; transform: translate(20px,-38px) scale(1); } }
+  @keyframes burst4 { from { opacity: 1; transform: translate(0,0) scale(.6); } to { opacity: 0; transform: translate(48px,-26px) scale(1); } }
+  @keyframes burst5 { from { opacity: 1; transform: translate(0,0) scale(.6); } to { opacity: 0; transform: translate(55px,5px) scale(1); } }
+  @keyframes burst6 { from { opacity: 1; transform: translate(0,0) scale(.6); } to { opacity: 0; transform: translate(-55px,5px) scale(1); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">
+    小程序网页预览版，交互、动画、规则与小程序一致。数据存在浏览器本地。
+    底部可模拟「过了一天」，用来验证假期跳过、缺勤断签、补签卡发放这些机制。
+  </div>
+  <div id="app"></div>
+</div>
+
+<div class="debug">
+  <button class="primary" id="btnNextDay">模拟到明天</button>
+  <button id="btnNight">模拟凌晨 2 点</button>
+  <button id="btnReset">清空数据</button>
+</div>
+
+<div class="tabbar" id="tabbar">
+  <div class="tab on" data-tab="today">
+    <div class="ic"><div class="t-circle"></div><div class="t-check"></div></div>
+    <div class="tab-text">今日</div>
+  </div>
+  <div class="tab" data-tab="history">
+    <div class="ic"><div class="c-bar c-bar1"></div><div class="c-bar c-bar2"></div><div class="c-bar c-bar3"></div></div>
+    <div class="tab-text">记录</div>
+  </div>
+  <div class="tab" data-tab="settings">
+    <div class="ic">
+      <div class="g-tooth g-t1"></div><div class="g-tooth g-t2"></div>
+      <div class="g-tooth g-t3"></div><div class="g-tooth g-t4"></div>
+      <div class="g-tooth g-t5"></div><div class="g-tooth g-t6"></div>
+      <div class="g-tooth g-t7"></div><div class="g-tooth g-t8"></div>
+      <div class="g-ring"></div>
+    </div>
+    <div class="tab-text">设置</div>
+  </div>
+</div>
+
+<!-- 浮层容器：对话框、底部面板、起名弹窗都放这里。
+     必须放在 .wrap 和 .screen 外面 —— .screen 有 transform 动画，
+     会让里面的 position:fixed 变成相对它定位，滚动后就跑偏了。 -->
+<div id="overlay"></div>
+
+<script>
+(function () {
+  var KEY = 'daily_three_v1';
+  var OFFSET_KEY = 'daily_three_clock_offset';
+  var MIN_TASKS = 3;
+  var MAX_GAP_DAYS = 30;
+  var CARDS_PER = 7;
+  var MAKEUP_WINDOW = 3;
+  var DEFAULTS = { dayStartHour: 4, minTasks: 3, maxCards: 3 };
+  var WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+  var MILESTONES = { totalFull: [10, 30, 50, 100, 200, 365], longestStreak: [7, 30, 100, 365], holidayPoints: [30, 100, 300] };
+  var MILESTONE_LABEL = { totalFull: '累计全勤', longestStreak: '最长连续', holidayPoints: '假期分' };
+
+  /* ---------- 日期 ---------- */
+  var clockOffset = 0;
+  try { clockOffset = Number(localStorage.getItem(OFFSET_KEY) || 0) || 0; } catch (e) { clockOffset = 0; }
+  function setOffset(n) { clockOffset = n; try { localStorage.setItem(OFFSET_KEY, String(n)); } catch (e) {} }
+
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function dateKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+  // 调试用的小时偏移：用来模拟"凌晨 2 点"，否则深夜逻辑要等到半夜才能验证
+  var clockHourShift = 0;
+  function currentHour() {
+    var h = new Date().getHours() + clockHourShift;
+    return ((h % 24) + 24) % 24;
+  }
+
+  /** 逻辑日期：每天从 dayStartHour 点才算新的一天 */
+  function nowKey(dayStartHour) {
+    var h = typeof dayStartHour === 'number' ? dayStartHour : 0;
+    var d = new Date();
+    d.setDate(d.getDate() + clockOffset);
+    if (h > 0 && currentHour() < h) d.setDate(d.getDate() - 1);
+    return dateKey(d);
+  }
+  function isLateNight(dayStartHour) {
+    var h = typeof dayStartHour === 'number' ? dayStartHour : 0;
+    return h > 0 && currentHour() < h;
+  }
+  function parseKey(k) { var p = String(k).split('-'); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }
+  function labelOf(k) { var d = parseKey(k); return (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+  function weekdayOf(k) { return WEEKDAYS[parseKey(k).getDay()]; }
+  function fullLabelOf(k) { return labelOf(k) + ' ' + weekdayOf(k); }
+  function shiftKey(k, n) { var d = parseKey(k); d.setDate(d.getDate() + n); return dateKey(d); }
+
+  /* ---------- 节假日（与 utils/holidays.js 一致） ---------- */
+  var BUILT_IN = [
+    { name: '元旦', start: '2026-01-01', end: '2026-01-03' },
+    { name: '春节', start: '2026-02-15', end: '2026-02-23' },
+    { name: '清明节', start: '2026-04-04', end: '2026-04-06' },
+    { name: '劳动节', start: '2026-05-01', end: '2026-05-05' },
+    { name: '端午节', start: '2026-06-19', end: '2026-06-21' },
+    { name: '中秋节', start: '2026-09-25', end: '2026-09-27' },
+    { name: '国庆节', start: '2026-10-01', end: '2026-10-07' }
+  ];
+  var COVERAGE = { from: '2026-01-01', to: '2026-12-31' };
+  var dayMap = {};
+  BUILT_IN.forEach(function (h) {
+    var c = h.start, g = 0;
+    while (c <= h.end && g < 400) { g++; dayMap[c] = h.name; c = shiftKey(c, 1); }
+  });
+  function holidayFind(key, custom) {
+    var list = custom || [];
+    for (var i = 0; i < list.length; i++) {
+      var h = list[i];
+      if (h && h.start && h.end && key >= h.start && key <= h.end) return { name: h.name || '假期', builtIn: false };
+    }
+    if (dayMap[key]) return { name: dayMap[key], builtIn: true };
+    return null;
+  }
+  function pointsFor(total, done, isRest) {
+    if (!isRest || !total) return 0;
+    return done + (done === total ? 2 : 0);
+  }
+
+  /* ---------- 数据层（与 utils/store.js 一致） ---------- */
+  var seq = 0;
+  function newId() { seq++; return 't' + Date.now().toString(36) + seq; }
+  function blankTask() { return { id: newId(), text: '', done: false }; }
+  function padToMin(list, min) {
+    var n = (typeof min === 'number' && min > 0) ? min : DEFAULTS.minTasks;
+    var o = (list || []).slice();
+    while (o.length < n) o.push(blankTask());
+    return o;
+  }
+  function filledTasks(list) { return (list || []).filter(function (t) { return t && t.text && t.text.trim(); }); }
+  function isFull(r) { return !!r && r.total > 0 && r.done === r.total; }
+
+  function archive(data, key, tasks) {
+    var filled = filledTasks(tasks);
+    var h = holidayFind(key, data.customHolidays);
+    var total = filled.length;
+    var done = filled.filter(function (t) { return t.done; }).length;
+    data.history[key] = {
+      date: key,
+      tasks: filled.map(function (t) { return { text: t.text.trim(), done: !!t.done }; }),
+      total: total, done: done,
+      rest: !!h, restName: h ? h.name : '',
+      makeup: false,
+      points: pointsFor(total, done, !!h),
+      archivedAt: Date.now()
+    };
+  }
+
+  function streakEndingAt(data, key) {
+    var streak = 0, cursor = key, guard = 0;
+    while (guard < 2000) {
+      guard++;
+      var r = data.history[cursor];
+      if (!r) break;
+      // 先看有没有完成 —— 假期里全做完也算数
+      if (isFull(r) || r.makeup) { streak++; cursor = shiftKey(cursor, -1); continue; }
+      if (r.rest) { cursor = shiftKey(cursor, -1); continue; }
+      break;
+    }
+    return streak;
+  }
+  function computeStreak(data) {
+    var streak = 0;
+    var f = filledTasks(data.tasks);
+    if (f.length && f.every(function (t) { return t.done; })) streak++;
+    return streak + streakEndingAt(data, shiftKey(data.today, -1));
+  }
+  function longestStreakOf(data) {
+    var keys = Object.keys(data.history).sort();
+    var best = 0, run = 0, prev = '', lastKey = '';
+    keys.forEach(function (k) {
+      var r = data.history[k];
+      if (prev && shiftKey(prev, 1) !== k) run = 0;
+      prev = k; lastKey = k;
+      // 先看有没有完成 —— 假期里全做完也算数
+      if (isFull(r) || r.makeup) { run++; if (run > best) best = run; }
+      else if (!r.rest) run = 0;
+    });
+    var f = filledTasks(data.tasks);
+    if (f.length && f.every(function (t) { return t.done; })) {
+      run = (lastKey && shiftKey(lastKey, 1) === data.today) ? run + 1 : 1;
+      if (run > best) best = run;
+    }
+    return best;
+  }
+  function todayInfo(data) {
+    var h = holidayFind(data.today, data.customHolidays);
+    var f = filledTasks(data.tasks);
+    var total = f.length;
+    var done = f.filter(function (t) { return t.done; }).length;
+    return {
+      rest: !!h, restName: h ? h.name : '', builtIn: h ? h.builtIn : false,
+      points: pointsFor(total, done, !!h), total: total, done: done
+    };
+  }
+  /** 取某天完整记录：今天用当前任务实时算，其余读 history */
+  function dayRecord(data, key) {
+    if (key === data.today) {
+      var filled = filledTasks(data.tasks);
+      var h = holidayFind(key, data.customHolidays);
+      var total = filled.length;
+      var done = filled.filter(function (t) { return t.done; }).length;
+      return {
+        date: key,
+        tasks: filled.map(function (t) { return { text: t.text.trim(), done: !!t.done }; }),
+        total: total, done: done,
+        rest: !!h, restName: h ? h.name : '',
+        makeup: false,
+        points: pointsFor(total, done, !!h),
+        live: true
+      };
+    }
+    return data.history[key] || null;
+  }
+
+  function derived(data) {
+    var info = todayInfo(data);
+    var todayFull = info.total > 0 && info.done === info.total;
+    var totalFull = todayFull ? 1 : 0;
+    var holidayPoints = info.points;
+    var fullDays = 0, blankDays = 0, restDays = 0, makeupDays = 0;
+    var totalTasks = info.total, doneTasks = info.done;
+
+    Object.keys(data.history).forEach(function (k) {
+      var r = data.history[k];
+      totalTasks += r.total || 0;
+      doneTasks += r.done || 0;
+      if (isFull(r)) { fullDays++; totalFull++; }
+      if (r.makeup) makeupDays++;
+      if (r.rest) restDays++;
+      else if (!r.total) blankDays++;
+      holidayPoints += r.points || 0;
+    });
+
+    return {
+      streak: computeStreak(data),
+      longestStreak: longestStreakOf(data),
+      totalFull: totalFull,
+      holidayPoints: holidayPoints,
+      recordedDays: Object.keys(data.history).length,
+      fullDays: fullDays, blankDays: blankDays, restDays: restDays, makeupDays: makeupDays,
+      totalTasks: totalTasks, doneTasks: doneTasks,
+      rate: totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0
+    };
+  }
+  function refreshUnlocked(data) {
+    var d = derived(data);
+    var today = data.today;
+    Object.keys(MILESTONES).forEach(function (type) {
+      MILESTONES[type].forEach(function (m) {
+        if (d[type] >= m && !data.achievements.unlocked[type + m]) data.achievements.unlocked[type + m] = today;
+      });
+    });
+  }
+
+  /* ---------- 账号容器 ---------- */
+  var MAX_ACCOUNTS = 8;
+
+  function emptyAccount(name) {
+    var t = nowKey(DEFAULTS.dayStartHour);
+    return {
+      id: 'a' + Date.now().toString(36) + (seq++),
+      profile: { name: String(name == null ? '' : name).trim().slice(0, 12), since: t },
+      today: t,
+      dayStartHour: DEFAULTS.dayStartHour, minTasks: DEFAULTS.minTasks, maxCards: DEFAULTS.maxCards,
+      tasks: padToMin([], DEFAULTS.minTasks), history: {}, customHolidays: [],
+      makeupCards: 0, makeupUsed: 0, lastGrantStreak: 0,
+      achievements: { startDate: t, unlocked: {} }
+    };
+  }
+
+  function defaultContainer() {
+    var a = emptyAccount('');
+    return { version: 4, activeId: a.id, accounts: [a] };
+  }
+
+  function migrateAccount(raw) {
+    var base = emptyAccount('');
+    var out = (raw && typeof raw === 'object') ? raw : base;
+
+    if (typeof out.id !== 'string' || !out.id) out.id = base.id;
+    if (!out.history || typeof out.history !== 'object') out.history = {};
+    if (!Array.isArray(out.customHolidays)) out.customHolidays = [];
+    if (typeof out.dayStartHour !== 'number' || out.dayStartHour < 0 || out.dayStartHour > 23) out.dayStartHour = DEFAULTS.dayStartHour;
+    if (typeof out.minTasks !== 'number' || out.minTasks < 1) out.minTasks = DEFAULTS.minTasks;
+    if (typeof out.maxCards !== 'number' || out.maxCards < 1) out.maxCards = DEFAULTS.maxCards;
+    if (!Array.isArray(out.tasks)) out.tasks = base.tasks;
+    out.tasks = padToMin(out.tasks, out.minTasks);
+    if (typeof out.makeupCards !== 'number') out.makeupCards = 0;
+    if (typeof out.makeupUsed !== 'number') out.makeupUsed = 0;
+    if (typeof out.lastGrantStreak !== 'number') out.lastGrantStreak = 0;
+    if (!out.profile || typeof out.profile !== 'object') out.profile = { name: '', since: out.today };
+    if (typeof out.profile.name !== 'string') out.profile.name = '';
+    if (!out.profile.since) out.profile.since = out.today || nowKey(DEFAULTS.dayStartHour);
+    if (typeof out.profile.skipped !== 'boolean') out.profile.skipped = false;
+    if (!out.today) out.today = nowKey(out.dayStartHour);
+    var oldAch = out.achievements || {};
+    out.achievements = { startDate: oldAch.startDate || out.today, unlocked: oldAch.unlocked || {} };
+    Object.keys(out.history).forEach(function (k) {
+      var r = out.history[k];
+      if (!r) return;
+      if (typeof r.rest !== 'boolean') { var h = holidayFind(k, out.customHolidays); r.rest = !!h; r.restName = h ? h.name : ''; }
+      if (typeof r.makeup !== 'boolean') r.makeup = false;
+      if (typeof r.points !== 'number') r.points = 0;
+    });
+    return out;
+  }
+
+  function readRaw() {
+    try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; }
+  }
+
+  /** 没有可用数据时返回 null —— 直接造默认容器会让 save 凭空多出一个账号 */
+  function buildContainer(raw) {
+    if (raw && typeof raw === 'object' && Array.isArray(raw.accounts) && raw.accounts.length) {
+      var accounts = raw.accounts.map(migrateAccount);
+      var activeId = accounts.some(function (a) { return a.id === raw.activeId; }) ? raw.activeId : accounts[0].id;
+      return { version: 4, activeId: activeId, accounts: accounts };
+    }
+    if (raw && typeof raw === 'object' && (raw.tasks || raw.history)) {
+      var acc = migrateAccount(raw);
+      return { version: 4, activeId: acc.id, accounts: [acc] };
+    }
+    return null;
+  }
+
+  function loadContainer() { return buildContainer(readRaw()) || defaultContainer(); }
+  function writeContainer(c) { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) {} }
+
+  /** 页面代码只跟当前账号打交道，不用关心多账号 */
+  function load() {
+    var c = loadContainer();
+    return c.accounts.filter(function (a) { return a.id === c.activeId; })[0] || c.accounts[0];
+  }
+
+  function save(account) {
+    var c = buildContainer(readRaw()) || { version: 4, activeId: account.id, accounts: [account] };
+    var found = false;
+    c.accounts = c.accounts.map(function (a) {
+      if (a.id === account.id) { found = true; return account; }
+      return a;
+    });
+    if (!found) c.accounts.push(account);
+    c.activeId = account.id;
+    writeContainer(c);
+  }
+
+  function listAccounts() {
+    var c = loadContainer();
+    return c.accounts.map(function (a) {
+      var name = a.profile.name || '';
+      return {
+        id: a.id, name: name || '未命名', rawName: name, initial: name ? name.slice(0, 1) : '?',
+        active: a.id === c.activeId, since: a.profile.since
+      };
+    });
+  }
+
+  function switchAccount(id) {
+    var c = loadContainer();
+    if (!c.accounts.some(function (a) { return a.id === id; })) return { ok: false, msg: '账号不存在' };
+    c.activeId = id;
+    writeContainer(c);
+    return { ok: true };
+  }
+
+  function addAccount(name) {
+    var c = loadContainer();
+    if (c.accounts.length >= MAX_ACCOUNTS) return { ok: false, msg: '最多 ' + MAX_ACCOUNTS + ' 个账号' };
+    var acc = emptyAccount(name);
+    c.accounts.push(acc);
+    c.activeId = acc.id;
+    writeContainer(c);
+    return { ok: true, id: acc.id };
+  }
+
+  function removeAccount(id) {
+    var c = loadContainer();
+    if (c.accounts.length <= 1) return { ok: false, msg: '至少要留一个账号' };
+    c.accounts = c.accounts.filter(function (a) { return a.id !== id; });
+    if (c.activeId === id) c.activeId = c.accounts[0].id;
+    writeContainer(c);
+    return { ok: true };
+  }
+
+  function renameAccount(id, name) {
+    var c = loadContainer();
+    var acc = c.accounts.filter(function (a) { return a.id === id; })[0];
+    if (!acc) return { ok: false, msg: '账号不存在' };
+    var n = String(name == null ? '' : name).trim().slice(0, 12);
+    if (!n) return { ok: false, msg: '名字不能为空' };
+    acc.profile.name = n;
+    // 已经有名字了，跳过标记就没意义了，复位掉
+    acc.profile.skipped = false;
+    writeContainer(c);
+    return { ok: true };
+  }
+
+  function settleCards(data, key) {
+    var st = streakEndingAt(data, key);
+    if (st === 0) data.lastGrantStreak = 0;
+    else if (st % CARDS_PER === 0 && st > data.lastGrantStreak) {
+      data.lastGrantStreak = st;
+      if (data.makeupCards < data.maxCards) data.makeupCards++;
+    }
+  }
+  function rollover(data) {
+    var today = nowKey(data.dayStartHour);
+    if (data.today !== today) {
+      var lastActive = data.today;
+      archive(data, lastActive, data.tasks);
+      settleCards(data, lastActive);
+
+      var floor = shiftKey(today, -MAX_GAP_DAYS);
+      var cursor = shiftKey(lastActive, 1);
+      if (cursor < floor) cursor = floor;
+      var guard = 0;
+      while (cursor < today && guard <= MAX_GAP_DAYS) {
+        guard++;
+        if (!data.history[cursor]) { archive(data, cursor, []); settleCards(data, cursor); }
+        cursor = shiftKey(cursor, 1);
+      }
+      data.today = today;
+      data.tasks = padToMin([], data.minTasks);
+    }
+    data.tasks = padToMin(data.tasks, data.minTasks);
+    refreshUnlocked(data);
+    return data;
+  }
+  function init() { var d = rollover(load()); save(d); return d; }
+
+  /* ---------- 设置 ---------- */
+  function clampInt(value, min, max, fallback) {
+    var n = Number(value);
+    if (isNaN(n)) return fallback;
+    return Math.max(min, Math.min(max, Math.round(n)));
+  }
+  function setDayStartHour(data, hour) {
+    data.dayStartHour = clampInt(hour, 0, 23, DEFAULTS.dayStartHour);
+    var next = nowKey(data.dayStartHour);
+    if (next < data.today) data.today = next;
+    return data;
+  }
+  function setMinTasks(data, n) {
+    data.minTasks = clampInt(n, 1, 10, DEFAULTS.minTasks);
+    data.tasks = padToMin(data.tasks, data.minTasks);
+    return data;
+  }
+  function setMaxCards(data, n) {
+    data.maxCards = clampInt(n, 1, 10, DEFAULTS.maxCards);
+    if (data.makeupCards > data.maxCards) data.makeupCards = data.maxCards;
+    return data;
+  }
+  function setProfileName(data, name) {
+    var n = String(name == null ? '' : name).trim().slice(0, 12);
+    if (!data.profile || typeof data.profile !== 'object') data.profile = { name: '', since: data.today };
+    data.profile.name = n;
+    if (!data.profile.since) data.profile.since = data.today;
+    data.profile.skipped = false;
+    return data;
+  }
+  /** 跳过起名引导，随时可以在设置里补 */
+  function skipProfileName(data) {
+    if (!data.profile || typeof data.profile !== 'object') data.profile = { name: '', since: data.today };
+    data.profile.skipped = true;
+    return data;
+  }
+
+  function makeup(data, key) {
+    if (data.makeupCards <= 0) return { ok: false, msg: '没有补签卡' };
+    var rec = data.history[key];
+    if (!rec) return { ok: false, msg: '这天没有记录' };
+    if (rec.rest) return { ok: false, msg: '假期不用补签' };
+    if (rec.makeup) return { ok: false, msg: '这天已经补过了' };
+    if (isFull(rec)) return { ok: false, msg: '这天本来就是全勤' };
+    var floor = shiftKey(data.today, -MAKEUP_WINDOW);
+    if (key < floor || key > data.today) return { ok: false, msg: '只能补最近 3 天' };
+    rec.makeup = true;
+    rec.makeupAt = Date.now();
+    data.makeupCards--;
+    data.makeupUsed++;
+    refreshUnlocked(data);
+    return { ok: true };
+  }
+  function makeupCandidates(data) {
+    var out = [];
+    for (var i = 1; i <= MAKEUP_WINDOW; i++) {
+      var key = shiftKey(data.today, -i);
+      var r = data.history[key];
+      if (!r || r.rest || r.makeup || isFull(r)) continue;
+      out.push(key);
+    }
+    return out;
+  }
+  function holidayDays(start, end) {
+    return Math.round((parseKey(end) - parseKey(start)) / 86400000) + 1;
+  }
+
+  /* ---------- 视图 ---------- */
+  var app = document.getElementById('app');
+  var view = {
+    screen: 'today', stagger: false, enteringId: '', leavingId: '',
+    celebrating: false, numAnim: false, toggleIndex: null, prevDone: -1,
+    form: { name: '', start: '', end: '' },
+    formTouched: false,
+    calYear: 0, calMonth: 0,
+    histYear: 0, histMonth: 0, selected: '',
+    sheet: null,
+    dialog: null,
+    dialogError: ''
+  };
+
+  var navDir = 'none';
+
+  /* ---------- 页面内对话框 ----------
+     替掉原生 alert / prompt / confirm：预览面板是沙箱 iframe，
+     那三个 API 被浏览器禁用，调用会静默返回 null/false（按钮点了没反应）。 */
+  function dialogHtml() {
+    var d = view.dialog;
+    if (!d) return '';
+    var h = '<div class="dlg-mask" data-act="dialog-cancel"><div class="dlg">';
+    h += '<div class="dlg-title">' + esc(d.title) + '</div>';
+    if (d.text) h += '<div class="dlg-text">' + esc(d.text) + '</div>';
+    if (d.kind === 'input') {
+      h += '<input class="dlg-input" id="dialog-input" maxlength="12" value="' + esc(d.value) +
+           '" placeholder="' + esc(d.placeholder) + '">';
+    }
+    if (view.dialogError) h += '<div class="dlg-err">' + esc(view.dialogError) + '</div>';
+    h += '<div class="dlg-btns">';
+    if (d.kind !== 'alert') h += '<div class="dlg-btn" data-act="dialog-cancel">取消</div>';
+    h += '<div class="dlg-btn ' + (d.danger ? 'dlg-btn-danger' : 'dlg-btn-ok') +
+         '" data-act="dialog-ok">' + esc(d.okText) + '</div>';
+    h += '</div></div></div>';
+    return h;
+  }
+
+  function showDialog(opts) {
+    view.dialog = {
+      kind: opts.kind || 'alert',
+      title: opts.title || '提示',
+      text: opts.text || '',
+      value: opts.value || '',
+      placeholder: opts.placeholder || '',
+      okText: opts.okText || '确定',
+      danger: !!opts.danger,
+      action: opts.action || '',
+      payload: opts.payload === undefined ? null : opts.payload
+    };
+    view.dialogError = '';
+    render();
+  }
+
+  /** 替代 alert() */
+  function alertBox(text, title) {
+    showDialog({ kind: 'alert', title: title || '提示', text: text });
+  }
+
+  function doDialogOk() {
+    var d = view.dialog;
+    if (!d) return;
+
+    if (d.kind === 'input') {
+      var el = document.getElementById('dialog-input');
+      var val = String(el ? el.value : '').trim();
+      if (!val) { view.dialogError = '名字不能为空'; render(); return; }
+      var res = null;
+      if (d.action === 'add-account') res = addAccount(val);
+      else if (d.action === 'rename-account') res = renameAccount(d.payload, val);
+      if (res && !res.ok) { view.dialogError = res.msg; render(); return; }
+    } else if (d.kind === 'confirm') {
+      if (d.action === 'delete-account') {
+        var r = removeAccount(d.payload);
+        if (!r.ok) { alertBox(r.msg); return; }
+      } else if (d.action === 'reset-all') {
+        doResetAll();
+      }
+    }
+
+    view.dialog = null;
+    view.dialogError = '';
+    render();
+  }
+
+  /**
+   * 统一入口：包一层 .screen 用来播页面过渡。
+   * 浮层（对话框 / 底部面板 / 起名弹窗）写到 #overlay，**不放 .screen 里** ——
+   * .screen 挂着 transform 动画，会让里面的 position:fixed 相对它定位，滚动后跑偏。
+   */
+  function renderInto(html, overlayHtml) {
+    app.innerHTML = '<div class="screen dir-' + navDir + '">' + html + '</div>';
+    navDir = 'none';
+
+    var ov = document.getElementById('overlay');
+    if (ov) ov.innerHTML = dialogHtml() + (overlayHtml || '');
+
+    var di = document.getElementById('dialog-input');
+    if (di) {
+      di.focus();
+      di.select();
+      di.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); doDialogOk(); }
+      });
+    }
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function tipOf(total, done, rest, points) {
+    if (!total) return rest ? '假期中，想做就做，不做也不断签' : '先写下今天要做的三件事';
+    if (done === total) return rest ? '假期全完成，+ ' + points + ' 假期分' : '今天全部完成，漂亮';
+    return '还剩 ' + (total - done) + ' 件没做';
+  }
+
+  /* ---------- 今日页 ---------- */
+  function renderToday() {
+    var data = init();
+    var filled = filledTasks(data.tasks);
+    var total = filled.length;
+    var done = filled.filter(function (t) { return t.done; }).length;
+    var percent = total ? Math.round(done / total * 100) : 0;
+    var canDelete = data.tasks.length > MIN_TASKS;
+    var info = todayInfo(data);
+
+    var allDone = total > 0 && done === total;
+    if (allDone && view.prevDone >= 0 && view.prevDone !== done) {
+      view.celebrating = true;
+      setTimeout(function () {
+        view.celebrating = false;
+        var c = app.querySelector('.card');
+        if (c) c.classList.remove('celebrate');
+        var b = app.querySelector('.burst');
+        if (b) b.remove();
+        var ch = app.querySelector('.chip');
+        if (ch) ch.remove();
+      }, 1400);
+    }
+    if (view.prevDone >= 0 && view.prevDone !== done) {
+      view.numAnim = true;
+      setTimeout(function () {
+        view.numAnim = false;
+        var el = document.getElementById('prog-num');
+        if (el) el.classList.remove('num-anim');
+      }, 360);
+    }
+    view.prevDone = done;
+
+    var html = '';
+    html += '<div class="head">';
+    if (data.profile.name) html += '<div class="greet">嗨，' + esc(data.profile.name) + '</div>';
+    html += '<div class="date">' + labelOf(data.today) + '</div>';
+    html += '<div class="weekday">' + weekdayOf(data.today) + '</div>';
+    if (isLateNight(data.dayStartHour)) {
+      html += '<div class="late-night">已过零点 · 还没到 ' + data.dayStartHour + ' 点，写的任务仍算这一天</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="card' + (view.celebrating ? ' celebrate' : '') + '">';
+    if (info.rest) {
+      html += '<div class="rest-banner"><div class="rest-dot"></div><div class="rest-text">' +
+              esc(info.restName) + ' · 假期中，不记录也不断签</div></div>';
+    }
+    if (view.celebrating) {
+      html += '<div class="burst">';
+      for (var d = 1; d <= 6; d++) html += '<div class="dot dot' + d + '"></div>';
+      html += '</div>';
+    }
+    html += '<div class="progress-row">';
+    html += '<div class="progress-num' + (view.numAnim ? ' num-anim' : '') + '" id="prog-num">' + done + '/' + total + '</div>';
+    html += '<div class="progress-label">已完成</div>';
+    if (view.celebrating) html += '<div class="chip">全部完成</div>';
+    html += '</div>';
+    html += '<div class="bar"><div class="bar-inner" id="prog-bar" style="width:' + percent + '%"></div></div>';
+    html += '<div class="tip" id="prog-tip">' + tipOf(total, done, info.rest, info.points) + '</div>';
+    html += '</div>';
+
+    html += '<div class="list">';
+    data.tasks.forEach(function (t, i) {
+      var cls = 'task';
+      if (view.stagger) cls += ' task-stagger';
+      if (t.id === view.enteringId) cls += ' task-enter';
+      if (t.id === view.leavingId) cls += ' task-leave';
+      html += '<div class="' + cls + '" style="animation-delay:' + (view.stagger ? i * 45 : 0) + 'ms">';
+      html += '<div class="check' + (t.done ? ' on' : '') + '" data-act="toggle" data-i="' + i + '">' +
+              (t.done ? '<div class="tick"></div><div class="ripple"></div>' : '') + '</div>';
+      if (t.done) {
+        html += '<div class="task-main"><div class="task-text-wrap"><div class="task-text">' + esc(t.text) +
+                '</div><div class="strike"></div></div></div>';
+      } else {
+        html += '<input class="task-input" data-i="' + i + '" value="' + esc(t.text) + '" maxlength="40" placeholder="写一件今天要做的事">';
+      }
+      if (canDelete) html += '<div class="del" data-act="del" data-i="' + i + '">×</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<div class="add" data-act="add">＋ 添加任务</div>';
+
+    var overlay = '';
+    if (!data.profile.name && !data.profile.skipped) {
+      overlay += '<div class="name-mask"><div class="name-card">';
+      overlay += '<div class="name-emoji"><div class="ne-circle"></div><div class="ne-check"></div></div>';
+      overlay += '<div class="name-title">给自己起个名字</div>';
+      overlay += '<div class="name-sub">只保存在这台设备上，不需要密码，随时可以改。</div>';
+      overlay += '<input class="name-input" id="name-input" maxlength="12" placeholder="比如：小明" value="' + esc(view.nameInput || '') + '">';
+      overlay += '<div class="name-btn" data-act="save-name">开始</div>';
+      overlay += '<div class="name-skip" data-act="skip-name">先跳过，直接用</div>';
+      overlay += '</div></div>';
+    }
+
+    renderInto(html, overlay);
+    bindInputs();
+    bindNameInput();
+
+    if (view.toggleIndex !== null) { playToggleAnim(view.toggleIndex); view.toggleIndex = null; }
+  }
+  function playToggleAnim(index) {
+    var rows = app.querySelectorAll('.task');
+    var row = rows[index];
+    if (!row) return;
+    var check = row.querySelector('.check');
+    var ripple = row.querySelector('.ripple');
+    var strike = row.querySelector('.strike');
+    if (check) { void check.offsetWidth; check.classList.add('anim-pop'); }
+    if (ripple) ripple.classList.add('anim-ripple');
+    if (strike) strike.classList.add('anim-strike');
+  }
+
+  function bindInputs() {
+    Array.prototype.forEach.call(app.querySelectorAll('input.task-input'), function (input) {
+      input.addEventListener('input', function () {
+        var i = Number(input.dataset.i);
+        var data = load();
+        if (!data.tasks[i]) return;
+        data.tasks[i].text = input.value;
+        save(data);
+        updateProgressOnly();
+      });
+    });
+  }
+
+  function bindNameInput() {
+    var el = document.getElementById('name-input');
+    if (!el) return;
+    el.focus();
+    el.addEventListener('input', function () { view.nameInput = el.value; });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitName();
+    });
+  }
+
+  function submitName() {
+    var name = String(view.nameInput || '').trim();
+    if (!name) { alertBox('先起个名字吧'); return; }
+    var d = load();
+    setProfileName(d, name);
+    save(d);
+    view.nameInput = '';
+    renderToday();
+  }
+
+  function updateProgressOnly() {
+    var data = load();
+    var f = filledTasks(data.tasks);
+    var total = f.length;
+    var done = f.filter(function (t) { return t.done; }).length;
+    var info = todayInfo(data);
+    var n = document.getElementById('prog-num');
+    var b = document.getElementById('prog-bar');
+    var t = document.getElementById('prog-tip');
+    if (n) n.textContent = done + '/' + total;
+    if (b) b.style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+    if (t) t.textContent = tipOf(total, done, info.rest, info.points);
+  }
+
+  /* ---------- 记录页 ---------- */
+  function buildRecord(key, r, candidates, cards) {
+    var full = isFull(r);
+    var blank = !r.total;
+    var badgeText, badgeClass, subText;
+
+    if (r.rest) {
+      badgeText = r.restName || '假期';
+      badgeClass = 'rest';
+      subText = r.total ? '假期里完成了 ' + r.done + '/' + r.total + ' 件' + (r.points ? ' · +' + r.points + ' 分' : '') : '假期，不记录也不断签';
+    } else if (full) {
+      badgeText = '全勤'; badgeClass = 'full';
+      subText = r.done + '/' + r.total + ' 已完成';
+    } else if (r.makeup) {
+      badgeText = '补签'; badgeClass = 'makeup';
+      subText = r.total ? '补签 · 当天完成 ' + r.done + '/' + r.total : '补签 · 当天没有安排任务';
+    } else if (blank) {
+      badgeText = '空缺'; badgeClass = 'blank';
+      subText = '那天没有安排任务';
+    } else {
+      badgeText = Math.round(r.done / r.total * 100) + '%'; badgeClass = 'part';
+      subText = r.done + '/' + r.total + ' 已完成';
+    }
+    return {
+      date: key, label: fullLabelOf(key), badgeText: badgeText, badgeClass: badgeClass,
+      subText: subText, dim: blank || r.rest,
+      canMakeup: cards > 0 && candidates.indexOf(key) >= 0
+    };
+  }
+
+  /* ---------- 记录页：日历 + 当天详情 ---------- */
+  function cellKind(rec) {
+    if (!rec) return 'none';
+    if (rec.makeup) return 'makeup';
+    if (rec.rest) return 'rest';
+    if (isFull(rec)) return 'full';
+    if (!rec.total) return 'miss';
+    return 'part';
+  }
+
+  function buildCalendarHtml(data, year, month, selected) {
+    var lead = new Date(year, month - 1, 1).getDay();
+    var daysInMonth = new Date(year, month, 0).getDate();
+    var cells = [];
+    for (var i = 0; i < lead; i++) cells.push({ blank: true });
+    for (var d = 1; d <= daysInMonth; d++) {
+      var key = year + '-' + pad(month) + '-' + pad(d);
+      var rec = dayRecord(data, key);
+      var kind = cellKind(rec);
+      cells.push({
+        key: key, day: d, blank: false, kind: kind,
+        restFull: kind === 'rest' && isFull(rec),
+        today: key === data.today,
+        future: key > data.today,
+        selected: key === selected
+      });
+    }
+    while (cells.length % 7 !== 0) cells.push({ blank: true });
+
+    var html = '';
+    html += '<div class="cal-card">';
+    html += '<div class="cal-head"><div class="cal-nav" data-act="hist-prev">‹</div>';
+    html += '<div class="cal-title">' + year + ' 年 ' + month + ' 月</div>';
+    html += '<div class="cal-nav" data-act="hist-next">›</div></div>';
+    html += '<div class="cal-week">';
+    ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) {
+      html += '<div class="cal-week-cell">' + w + '</div>';
+    });
+    html += '</div>';
+    html += '<div class="cal-grid">';
+    cells.forEach(function (c) {
+      var cls = 'cal-cell';
+      if (c.blank) {
+        cls += ' is-blank';
+      } else {
+        cls += ' k-' + c.kind;
+        if (c.today) cls += ' is-today';
+        if (c.future) cls += ' is-future';
+        if (c.selected) cls += ' is-selected';
+        if (c.restFull) cls += ' is-restfull';
+      }
+      html += '<div class="' + cls + '" data-act="hist-pick" data-key="' + (c.key || '') + '">';
+      if (!c.blank) {
+        html += '<div class="cal-day"><span>' + c.day + '</span>';
+        if (c.today) html += '<div class="today-dot"></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div class="cal-legend">';
+    html += '<div class="lg"><div class="lg-dot lg-full"></div><div class="lg-text">全勤</div></div>';
+    html += '<div class="lg"><div class="lg-dot lg-part"></div><div class="lg-text">部分</div></div>';
+    html += '<div class="lg"><div class="lg-dot lg-miss"></div><div class="lg-text">缺勤</div></div>';
+    html += '<div class="lg"><div class="lg-dot lg-rest"></div><div class="lg-text">假期</div></div>';
+    html += '<div class="lg"><div class="lg-dot lg-makeup"></div><div class="lg-text">补签</div></div>';
+    html += '</div>';
+    html += '<div class="cal-note">点日历上的任意一天，下面就会显示那天的记录。</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function buildDetailHtml(data, key, candidates, cards) {
+    var rec = dayRecord(data, key);
+    var html = '<div class="detail-card">';
+    html += '<div class="detail-head"><div class="detail-date">' + fullLabelOf(key) + '</div>';
+
+    if (!rec) {
+      html += '</div><div class="detail-empty">' + (key > data.today ? '这天还没到' : '这天还没有记录') + '</div></div>';
+      return html;
+    }
+
+    var full = isFull(rec);
+    var statusText = '', statusClass = 'part';
+    if (rec.makeup) { statusText = '补签'; statusClass = 'makeup'; }
+    else if (rec.rest) { statusText = rec.restName || '假期'; statusClass = 'rest'; }
+    else if (full) { statusText = '全勤'; statusClass = 'full'; }
+    else if (!rec.total) { statusText = '缺勤'; statusClass = 'miss'; }
+    else { statusText = Math.round(rec.done / rec.total * 100) + '%'; statusClass = 'part'; }
+
+    html += '<div class="detail-status st-' + statusClass + '">' + statusText + '</div></div>';
+
+    html += '<div class="detail-label">那天做了什么</div>';
+    var tasks = rec.tasks || [];
+    if (!tasks.length) {
+      html += '<div class="detail-empty">' + (key === data.today ? '今天还没安排任务' : '那天没有安排任务') + '</div>';
+    } else {
+      tasks.forEach(function (t) {
+        html += '<div class="dtask"><div class="dtask-mark' + (t.done ? ' on' : '') + '"></div>';
+        html += '<div class="dtask-text' + (t.done ? ' done' : '') + '">' + esc(t.text) + '</div></div>';
+      });
+    }
+
+    html += '<div class="detail-label">那天拿到了什么</div>';
+    var rewards = [];
+    if (full) rewards.push({ text: '全勤 +1 天', kind: 'full' });
+    if (rec.points > 0) rewards.push({ text: '假期分 +' + rec.points, kind: 'points' });
+    if (rec.makeup) rewards.push({ text: '补签 -1 张', kind: 'makeup' });
+    if (rec.rest && !full) rewards.push({ text: '假期，不算缺勤', kind: 'rest' });
+
+    if (!rewards.length) {
+      html += '<div class="detail-empty">这天没有奖励</div>';
+    } else {
+      html += '<div class="reward-row">';
+      rewards.forEach(function (r) {
+        html += '<div class="reward rw-' + r.kind + '">' + r.text + '</div>';
+      });
+      html += '</div>';
+    }
+
+    if (cards > 0 && candidates.indexOf(key) >= 0) {
+      html += '<div class="makeup-btn" data-act="makeup" data-date="' + key + '">用 1 张补签卡补回这天</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderHistory() {
+    var data = init();
+    var s = derived(data);
+    var candidates = makeupCandidates(data);
+
+    if (!view.histYear) {
+      var t0 = parseKey(data.today);
+      view.histYear = t0.getFullYear();
+      view.histMonth = t0.getMonth() + 1;
+    }
+    if (!view.selected) view.selected = data.today;
+
+    var html = '';
+    html += buildCalendarHtml(data, view.histYear, view.histMonth, view.selected);
+    html += buildDetailHtml(data, view.selected, candidates, data.makeupCards);
+
+    html += '<div class="stat-card">';
+    html += '<div class="stat"><div class="stat-num">0</div><div class="stat-label">连续打卡</div></div>';
+    html += '<div class="divider"></div>';
+    html += '<div class="stat"><div class="stat-num">0</div><div class="stat-label">累计全勤</div></div>';
+    html += '<div class="divider"></div>';
+    html += '<div class="stat"><div class="stat-num">0</div><div class="stat-label">最长连续</div></div>';
+    html += '</div>';
+
+    html += '<div class="stat-card second">';
+    html += '<div class="stat"><div class="stat-num amber">0</div><div class="stat-label">假期分</div></div>';
+    html += '<div class="divider"></div>';
+    html += '<div class="stat"><div class="stat-num">' + data.makeupCards + '</div><div class="stat-label">补签卡</div></div>';
+    html += '<div class="divider"></div>';
+    html += '<div class="stat"><div class="stat-num plain">' + s.restDays + '</div><div class="stat-label">假期天数</div></div>';
+    html += '</div>';
+
+    html += '<div class="summary">累计记录 ' + s.recordedDays + ' 天 · 完成 ' + s.doneTasks + '/' + s.totalTasks + ' 件' +
+            (s.restDays ? ' · 假期 ' + s.restDays + ' 天' : '') +
+            (s.makeupDays ? ' · 补签 ' + s.makeupDays + ' 天' : '') + '</div>';
+
+    var achGroups = Object.keys(MILESTONES).map(function (type) {
+      var current = s[type];
+      var levels = MILESTONES[type];
+      var unit = type === 'holidayPoints' ? '分' : '天';
+      var next = null, unlockedHere = 0;
+      var items = levels.map(function (m) {
+        var done = current >= m;
+        if (done) unlockedHere++;
+        if (!done && next === null) next = m;
+        return { value: m, state: done ? 'done' : (m === next ? 'next' : '') };
+      });
+      return {
+        label: MILESTONE_LABEL[type], current: current, unit: unit,
+        unlockedHere: unlockedHere, totalHere: levels.length,
+        nextText: next === null ? '这一组已经全部解锁' : '下一个 ' + next + ' ' + unit + ' · 还差 ' + (next - current) + ' ' + unit,
+        items: items
+      };
+    });
+    var achUnlocked = 0, achTotal = 0;
+    achGroups.forEach(function (g) { achUnlocked += g.unlockedHere; achTotal += g.totalHere; });
+
+    html += '<div class="section-title"><span>成就</span><span class="section-extra">已解锁 ' + achUnlocked + ' / ' + achTotal + '</span></div>';
+    html += '<div class="ach-card">';
+    html += '<div class="ach-hint">攒到档位就点亮一个，永久记录，不会因为断签丢掉。</div>';
+    achGroups.forEach(function (g) {
+      html += '<div class="ach-row"><div class="ach-head">';
+      html += '<div class="ach-label">' + g.label + '</div>';
+      html += '<div class="ach-current">' + g.current + '<span class="ach-unit">' + g.unit + '</span></div></div>';
+      html += '<div class="ach-next">' + g.nextText + '</div>';
+      html += '<div class="ach-chips">';
+      g.items.forEach(function (it) {
+        html += '<div class="ach-chip ' + it.state + '">' + it.value + '</div>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    renderInto(html);
+    countUp(s);
+  }
+
+  function countUp(target) {
+    var nums = app.querySelectorAll('.stat-num');
+    var steps = 20, i = 0;
+    function tick() {
+      i++;
+      var eased = 1 - Math.pow(1 - i / steps, 3);
+      if (nums[0]) nums[0].textContent = Math.round(target.streak * eased);
+      if (nums[1]) nums[1].textContent = Math.round(target.totalFull * eased);
+      if (nums[2]) nums[2].textContent = Math.round(target.longestStreak * eased);
+      if (nums[3]) nums[3].textContent = Math.round(target.holidayPoints * eased);
+      if (i < steps) setTimeout(tick, 26);
+    }
+    tick();
+  }
+
+  /* ---------- 假期设置页 ---------- */
+  function buildCells(year, month, custom, form, today) {
+    var lead = new Date(year, month - 1, 1).getDay();
+    var daysInMonth = new Date(year, month, 0).getDate();
+    var cells = [];
+    for (var i = 0; i < lead; i++) cells.push({ idx: 'lead' + i, blank: true });
+    for (var d = 1; d <= daysInMonth; d++) {
+      var key = year + '-' + pad(month) + '-' + pad(d);
+      var h = holidayFind(key, custom);
+      cells.push({
+        idx: key, key: key, day: d, blank: false,
+        kind: h ? (h.builtIn ? 'builtin' : 'custom') : 'normal',
+        today: key === today,
+        past: key < today,
+        selected: !!(form.start && form.end && key >= form.start && key <= form.end)
+      });
+    }
+    while (cells.length % 7 !== 0) cells.push({ idx: 'tail' + cells.length, blank: true });
+    return cells;
+  }
+
+  function renderHoliday() {
+    var data = init();
+    if (!view.calYear) {
+      var t = parseKey(data.today);
+      view.calYear = t.getFullYear();
+      view.calMonth = t.getMonth() + 1;
+    }
+    if (!view.form.start) {
+      view.form.start = data.today;
+      view.form.end = data.today;
+    }
+
+    var f = view.form;
+    var days = (f.start && f.end && f.start <= f.end) ? holidayDays(f.start, f.end) : 0;
+    var cells = buildCells(view.calYear, view.calMonth, data.customHolidays, f, data.today);
+    var mk = view.calYear + '-' + pad(view.calMonth);
+    var covered = mk >= COVERAGE.from.slice(0, 7) && mk <= COVERAGE.to.slice(0, 7);
+    var nextYear = String(Number(COVERAGE.to.slice(0, 4)) + 1) + ' 年';
+
+    var html = '';
+    html += '<div class="navbar">';
+    html += '<div class="nav-back" data-act="holiday-back"><div class="nav-arrow"></div></div>';
+    html += '<div class="nav-title">假期设置</div>';
+    html += '<div class="nav-back nav-ghost"></div>';
+    html += '</div>';
+
+    html += '<div class="cal-card">';
+    html += '<div class="cal-head"><div class="cal-nav" data-act="prev-month">‹</div>';
+    html += '<div class="cal-title">' + view.calYear + ' 年 ' + view.calMonth + ' 月</div>';
+    html += '<div class="cal-nav" data-act="next-month">›</div></div>';
+
+    html += '<div class="cal-week">';
+    ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) {
+      html += '<div class="cal-week-cell">' + w + '</div>';
+    });
+    html += '</div>';
+
+    html += '<div class="cal-grid">';
+    cells.forEach(function (c) {
+      var cls = 'cal-cell';
+      if (c.blank) {
+        cls += ' is-blank';
+      } else {
+        cls += ' kind-' + c.kind;
+        if (c.today) cls += ' is-today';
+        if (c.past) cls += ' is-past';
+        if (c.selected) cls += ' is-selected';
+      }
+      html += '<div class="' + cls + '" data-act="pick-day" data-key="' + (c.key || '') + '">';
+      if (!c.blank) html += '<div class="cal-day">' + c.day + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<div class="cal-legend">';
+    html += '<div class="lg"><div class="lg-dot lg-builtin"></div><div class="lg-text">法定假日</div></div>';
+    html += '<div class="lg"><div class="lg-dot lg-custom"></div><div class="lg-text">我的假期</div></div>';
+    html += '<div class="lg"><div class="lg-dot lg-today"></div><div class="lg-text">今天</div></div>';
+    html += '</div>';
+
+    html += '<div class="cal-note">' + (covered
+      ? '点日期可以快速选起止；再点一次区间内的日子会重置成单日。'
+      : '这个月不在内置表覆盖范围（' + COVERAGE.from + ' ~ ' + COVERAGE.to + '）内，法定假日暂时标不出来。') + '</div>';
+    html += '</div>';
+
+    html += '<div class="form-card">';
+    html += '<div class="form-title">添加假期</div>';
+    html += '<div class="field"><label>名称</label><input id="h-name" maxlength="8" placeholder="寒假 / 暑假 / 年假 / 出差" value="' + esc(f.name) + '"></div>';
+    html += '<div class="field"><label>开始</label><input id="h-start" type="date" value="' + f.start + '" min="' + data.today + '"></div>';
+    html += '<div class="field"><label>结束</label><input id="h-end" type="date" value="' + f.end + '" min="' + data.today + '"></div>';
+    if (days > 0) html += '<div class="days">共 ' + days + ' 天</div>';
+    html += '<div class="submit" data-act="add-holiday">加入假期表</div>';
+    html += '<div class="hint">标记为假期的日子不记录、不断签，连续打卡会自动跳过；假期里做任务还有额外加分（每完成一件 +1，全完成再 +2）。</div>';
+    html += '<div class="hint">只能标记今天及以后 —— 假期的意义是提前安排，不是事后补账。</div>';
+    html += '</div>';
+
+    html += '<div class="section-title">我标记的假期</div>';
+    if (!data.customHolidays.length) {
+      html += '<div class="empty">还没有手动标记的假期</div>';
+    } else {
+      data.customHolidays.forEach(function (h) {
+        html += '<div class="rec"><div class="rec-left">';
+        html += '<div class="rec-date">' + esc(h.name) + '</div>';
+        html += '<div class="rec-sub">' + (h.start === h.end ? labelOf(h.start) : labelOf(h.start) + ' ~ ' + labelOf(h.end)) +
+                ' · ' + holidayDays(h.start, h.end) + ' 天</div></div>';
+        html += '<div class="item-del" data-act="del-holiday" data-id="' + h.id + '">删除</div></div>';
+      });
+    }
+
+    html += '<div class="note">内置法定节假日数据来源：国务院办公厅通知。' + nextYear + '的放假安排还没发布，届时更新一次代码即可。</div>';
+
+    renderInto(html);
+
+    var nameEl = document.getElementById('h-name');
+    var startEl = document.getElementById('h-start');
+    var endEl = document.getElementById('h-end');
+    if (nameEl) nameEl.addEventListener('input', function () { view.form.name = nameEl.value; });
+    if (startEl) startEl.addEventListener('change', function () {
+      view.form.start = startEl.value;
+      if (!view.form.end || view.form.end < view.form.start) view.form.end = view.form.start;
+      view.formTouched = true;
+      renderHoliday();
+    });
+    if (endEl) endEl.addEventListener('change', function () {
+      view.form.end = endEl.value;
+      view.formTouched = true;
+      renderHoliday();
+    });
+  }
+
+  /* ---------- 设置页 ---------- */
+  function renderSettings() {
+    var data = init();
+    var current = nowKey(data.dayStartHour);
+    var lateNight = isLateNight(data.dayStartHour);
+    var name = data.profile.name || '';
+
+    var html = '';
+
+    /* 账号 */
+    var accs = listAccounts();
+    html += '<div class="group-title">账号</div>';
+    html += '<div class="card pad-0">';
+    accs.forEach(function (a) {
+      html += '<div class="acct' + (a.active ? ' acct-on' : '') + '" data-act="account-tap" data-id="' + a.id + '">';
+      html += '<div class="avatar">' + esc(a.initial) + '</div>';
+      html += '<div class="acct-main"><div class="acct-name">' + esc(a.name);
+      if (a.active) html += '<span class="acct-badge">当前</span>';
+      html += '</div><div class="acct-sub">' + (a.active ? '点一下改名' : '点一下切换过来') + '</div></div>';
+      if (accs.length > 1) {
+        html += '<div class="acct-del" data-act="account-del" data-id="' + a.id + '">删除</div>';
+      }
+      html += '</div>';
+    });
+    html += '<div class="acct acct-add" data-act="account-add">';
+    html += '<div class="avatar avatar-add">＋</div>';
+    html += '<div class="acct-main"><div class="acct-name acct-name-add">添加账号</div>';
+    html += '<div class="acct-sub">每个账号有自己独立的任务、历史和成就</div></div>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="group-note">点一下切换账号，点当前账号可以改名。最多 ' + MAX_ACCOUNTS + ' 个。</div>';
+
+    /* 规则 */
+    html += '<div class="group-title">规则</div>';
+    html += '<div class="card pad-0">';
+    html += '<div class="row" data-act="open-sheet" data-kind="hour"><div class="row-ic ic-clock"><div class="s-ring"></div><div class="s-hand-v"></div><div class="s-hand-h"></div></div>';
+    html += '<div class="row-title">每日结算时间</div><div class="row-value">' + data.dayStartHour + ' 点</div><div class="chev">›</div></div>';
+
+    html += '<div class="row" data-act="open-sheet" data-kind="min"><div class="row-ic ic-list"><div class="s-line s-l1"></div><div class="s-line s-l2"></div><div class="s-line s-l3"></div></div>';
+    html += '<div class="row-title">任务栏最少几个</div><div class="row-value">' + data.minTasks + ' 个</div><div class="chev">›</div></div>';
+
+    html += '<div class="row" data-act="open-sheet" data-kind="cards"><div class="row-ic ic-card"><div class="s-card"></div></div>';
+    html += '<div class="row-title">补签卡最多存几张</div><div class="row-value">' + data.maxCards + ' 张</div><div class="chev">›</div></div>';
+    html += '</div>';
+    html += '<div class="group-note">结算时间之后算新的一天。默认 4 点 —— 凌晨写的任务仍然算前一天。</div>';
+
+    /* 内容 */
+    html += '<div class="group-title">内容</div>';
+    html += '<div class="card pad-0">';
+    html += '<div class="row" data-act="holiday"><div class="row-ic ic-cal"><div class="s-cal"></div><div class="s-cal-bar"></div></div>';
+    html += '<div class="row-title">假期设置</div><div class="row-value">' + data.customHolidays.length + ' 个假期</div><div class="chev">›</div></div>';
+    html += '</div>';
+    html += '<div class="group-note">假期不记录、不断签，连续打卡会自动跳过；假期里做任务还有额外加分。</div>';
+
+    /* 现在的状态 */
+    html += '<div class="group-title">现在的状态</div>';
+    html += '<div class="card">';
+    html += '<div class="info-row"><div class="info-label">日历上的日期</div><div class="info-value">' + dateKey(new Date()) + '</div></div>';
+    html += '<div class="info-row"><div class="info-label">现在算作</div><div class="info-value info-strong">' + fullLabelOf(current) + '</div></div>';
+    html += '<div class="info-row info-last"><div class="info-label">开始记录于</div><div class="info-value">' +
+            (data.achievements.startDate ? labelOf(data.achievements.startDate) : '—') + '</div></div>';
+    html += '</div>';
+    if (lateNight) {
+      html += '<div class="group-note">现在是深夜时段（过了零点但还没到 ' + data.dayStartHour + ' 点），写的任务仍然算前一天。</div>';
+    }
+
+    /* 选择面板 */
+    var overlay = '';
+    if (view.sheet) {
+      overlay += '<div class="sheet-mask" data-act="close-sheet"><div class="sheet">';
+      overlay += '<div class="sheet-title">' + view.sheet.title + '</div>';
+      overlay += '<div class="sheet-list">';
+      view.sheet.options.forEach(function (o) {
+        var on = o.value === view.sheet.selected;
+        overlay += '<div class="sheet-item' + (on ? ' on' : '') + '" data-act="pick-opt" data-value="' + o.value + '">' + o.label;
+        if (on) overlay += '<span class="sheet-check"></span>';
+        overlay += '</div>';
+      });
+      overlay += '</div></div></div>';
+    }
+
+    renderInto(html, overlay);
+  }
+
+  /** 打开底部选择面板 */
+  function openSheet(kind) {
+    var d = load();
+    var options = [];
+    var title = '';
+    var selected = 0;
+    var i;
+
+    if (kind === 'hour') {
+      title = '每日结算时间';
+      selected = d.dayStartHour;
+      for (i = 0; i < 24; i++) options.push({ value: i, label: i + ' 点' });
+    } else if (kind === 'min') {
+      title = '任务栏最少几个';
+      selected = d.minTasks;
+      for (i = 1; i <= 10; i++) options.push({ value: i, label: i + ' 个' });
+    } else {
+      title = '补签卡最多存几张';
+      selected = d.maxCards;
+      for (i = 1; i <= 10; i++) options.push({ value: i, label: i + ' 张' });
+    }
+
+    view.sheet = { kind: kind, title: title, options: options, selected: selected };
+    render();
+  }
+
+  function applyOption(kind, value) {
+    var d = load();
+    if (kind === 'hour') setDayStartHour(d, value);
+    else if (kind === 'min') setMinTasks(d, value);
+    else if (kind === 'cards') setMaxCards(d, value);
+    save(d);
+  }
+
+  /* ---------- 事件 ---------- */
+  // 监听整个文档：浮层（对话框 / 底部面板 / 起名弹窗）现在挂在 #overlay 下，
+  // 不在 #app 里 —— 只监听 #app 会收不到它们的点击。
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.dataset.act;
+    var i = Number(el.dataset.i);
+    var data = load();
+
+    if (act === 'toggle') {
+      var task = data.tasks[i];
+      if (!task || !task.text || !task.text.trim()) return;
+      task.done = !task.done;
+      save(data);
+      view.toggleIndex = i;
+      renderToday();
+    } else if (act === 'add') {
+      var fresh = blankTask();
+      data.tasks.push(fresh);
+      save(data);
+      view.enteringId = fresh.id;
+      renderToday();
+      setTimeout(function () {
+        if (view.enteringId === fresh.id) {
+          view.enteringId = '';
+          var rows = app.querySelectorAll('.task');
+          var last = rows[rows.length - 1];
+          if (last) last.classList.remove('task-enter');
+        }
+      }, 520);
+    } else if (act === 'del') {
+      if (data.tasks.length <= MIN_TASKS) return;
+      var id = data.tasks[i].id;
+      view.leavingId = id;
+      renderToday();
+      setTimeout(function () {
+        var d = load();
+        var at = -1;
+        d.tasks.forEach(function (t, idx) { if (t.id === id) at = idx; });
+        if (at >= 0) d.tasks.splice(at, 1);
+        d.tasks = padToMin(d.tasks);
+        save(d);
+        view.leavingId = '';
+        renderToday();
+      }, 300);
+    } else if (act === 'history') {
+      view.screen = 'history';
+      navDir = 'forward';
+      staggerOnce();
+      renderHistory();
+    } else if (act === 'holiday') {
+      view.screen = 'holiday';
+      navDir = 'forward';
+      view.form = { name: '', start: '', end: '' };
+      view.formTouched = false;
+      renderHoliday();
+    } else if (act === 'back') {
+      view.screen = 'today';
+      navDir = 'back';
+      renderToday();
+    } else if (act === 'settings') {
+      view.screen = 'settings';
+      navDir = 'forward';
+      renderSettings();
+    } else if (act === 'save-name') {
+      submitName();
+    } else if (act === 'skip-name') {
+      var ds = load();
+      skipProfileName(ds);
+      save(ds);
+      view.nameInput = '';
+      renderToday();
+    } else if (act === 'account-tap') {
+      var aid = el.dataset.id;
+      var acc = listAccounts().filter(function (x) { return x.id === aid; })[0];
+      if (!acc) return;
+      if (acc.active) {
+        showDialog({
+          kind: 'input', title: '修改名字', value: acc.rawName,
+          placeholder: '输入名字', action: 'rename-account', payload: aid
+        });
+        return;
+      }
+      switchAccount(aid);
+      view.sheet = null;
+      render();
+    } else if (act === 'account-add') {
+      showDialog({
+        kind: 'input', title: '新账号的名字',
+        placeholder: '比如：工作 / 个人', action: 'add-account'
+      });
+    } else if (act === 'account-del') {
+      showDialog({
+        kind: 'confirm', title: '删除账号',
+        text: '这个账号的任务、历史、假期和成就都会一起删除，无法恢复。',
+        okText: '删除', danger: true, action: 'delete-account', payload: el.dataset.id
+      });
+    } else if (act === 'dialog-ok') {
+      doDialogOk();
+    } else if (act === 'dialog-cancel') {
+      // 点对话框内部不关
+      if (e.target.closest('.dlg')) return;
+      view.dialog = null;
+      view.dialogError = '';
+      render();
+    } else if (act === 'open-sheet') {
+      openSheet(el.dataset.kind);
+    } else if (act === 'pick-opt') {
+      applyOption(view.sheet ? view.sheet.kind : '', Number(el.dataset.value));
+      view.sheet = null;
+      render();
+    } else if (act === 'close-sheet') {
+      // 点面板内部不关，点遮罩才关
+      if (e.target.closest('.sheet')) return;
+      view.sheet = null;
+      render();
+    } else if (act === 'holiday-back') {
+      view.screen = 'settings';
+      navDir = 'back';
+      render();
+    } else if (act === 'hist-prev') {
+      var hy = view.histYear, hm = view.histMonth - 1;
+      if (hm < 1) { hm = 12; hy -= 1; }
+      view.histYear = hy; view.histMonth = hm;
+      renderHistory();
+    } else if (act === 'hist-next') {
+      var hy2 = view.histYear, hm2 = view.histMonth + 1;
+      if (hm2 > 12) { hm2 = 1; hy2 += 1; }
+      view.histYear = hy2; view.histMonth = hm2;
+      renderHistory();
+    } else if (act === 'hist-pick') {
+      var pickedDay = el.dataset.key;
+      if (!pickedDay || pickedDay === view.selected) return;
+      view.selected = pickedDay;
+      renderHistory();
+    } else if (act === 'prev-month') {
+      var py = view.calYear, pm = view.calMonth - 1;
+      if (pm < 1) { pm = 12; py -= 1; }
+      view.calYear = py; view.calMonth = pm;
+      renderHoliday();
+    } else if (act === 'next-month') {
+      var ny = view.calYear, nm = view.calMonth + 1;
+      if (nm > 12) { nm = 1; ny += 1; }
+      view.calYear = ny; view.calMonth = nm;
+      renderHoliday();
+    } else if (act === 'pick-day') {
+      var picked = el.dataset.key;
+      if (!picked) return;
+      if (picked < nowKey()) {
+        alertBox('不能选过去的日期');
+        return;
+      }
+      var ff = view.form;
+      if (!view.formTouched) {
+        // 表单默认是"今天~今天"，那只是占位，第一次点日历应该是一次全新的选择
+        ff.start = picked; ff.end = picked;
+        view.formTouched = true;
+      } else if (ff.start && ff.end && picked > ff.start && picked < ff.end) {
+        ff.start = picked; ff.end = picked;
+      } else if (ff.start && ff.end && picked > ff.end) {
+        ff.end = picked;
+      } else if (ff.start && ff.end && picked < ff.start) {
+        ff.start = picked;
+      } else {
+        ff.start = picked; ff.end = picked;
+      }
+      renderHoliday();
+    } else if (act === 'makeup') {
+      var key = el.dataset.date;
+      var d2 = load();
+      var res = makeup(d2, key);
+      if (!res.ok) { alertBox(res.msg); return; }
+      save(d2);
+      staggerOnce();
+      renderHistory();
+    } else if (act === 'add-holiday') {
+      var d3 = load();
+      var f = view.form;
+      if (!f.start || !f.end) { alertBox('请选择起止日期'); return; }
+      if (f.start > f.end) { alertBox('结束日期不能早于开始'); return; }
+      if (f.start < d3.today) { alertBox('只能标记今天及以后'); return; }
+      d3.customHolidays.push({
+        id: 'h' + newId(),
+        name: (f.name || '').trim().slice(0, 8) || '假期',
+        start: f.start, end: f.end, createdAt: Date.now()
+      });
+      d3.customHolidays.sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+      save(d3);
+      view.form = { name: '', start: d3.today, end: d3.today };
+      view.formTouched = false;
+      renderHoliday();
+    } else if (act === 'del-holiday') {
+      var hid = el.dataset.id;
+      var d4 = load();
+      d4.customHolidays = d4.customHolidays.filter(function (h) { return h.id !== hid; });
+      save(d4);
+      renderHoliday();
+    }
+  });
+
+  function staggerOnce() {
+    view.stagger = true;
+    setTimeout(function () {
+      view.stagger = false;
+      Array.prototype.forEach.call(app.querySelectorAll('.task-stagger'), function (el) {
+        el.classList.remove('task-stagger');
+        el.style.animationDelay = '';
+      });
+    }, 760);
+  }
+
+  /* ---------- 底部导航 ---------- */
+  var TAB_ORDER = { today: 0, history: 1, settings: 2 };
+
+  /** 假期设置是从设置里进去的，所以高亮"设置" */
+  function activeTab() {
+    return view.screen === 'holiday' ? 'settings' : view.screen;
+  }
+
+  function updateTabbar() {
+    var active = activeTab();
+    Array.prototype.forEach.call(document.querySelectorAll('#tabbar .tab'), function (el) {
+      el.classList.toggle('on', el.dataset.tab === active);
+    });
+  }
+
+  function render() {
+    if (view.screen === 'history') renderHistory();
+    else if (view.screen === 'settings') renderSettings();
+    else if (view.screen === 'holiday') renderHoliday();
+    else renderToday();
+    updateTabbar();
+  }
+
+  document.getElementById('tabbar').addEventListener('click', function (e) {
+    var el = e.target.closest('.tab');
+    if (!el) return;
+    var tab = el.dataset.tab;
+    var from = activeTab();
+
+    if (tab === from) {
+      // 已经在这个 tab 上：如果正停在假期设置页，就退回设置
+      if (view.screen === 'holiday') {
+        view.screen = 'settings';
+        navDir = 'back';
+        render();
+      }
+      return;
+    }
+
+    navDir = TAB_ORDER[tab] > TAB_ORDER[from] ? 'forward' : 'back';
+    view.screen = tab;
+    if (tab === 'history') staggerOnce();
+    render();
+  });
+
+  document.getElementById('btnNextDay').addEventListener('click', function () {
+    setOffset(clockOffset + 1);
+    init();
+    view.screen = 'today';
+    view.prevDone = -1;
+    staggerOnce();
+    render();
+  });
+
+  function doResetAll() {
+    setOffset(0);
+    clockHourShift = 0;
+    var nb = document.getElementById('btnNight');
+    if (nb) nb.textContent = '模拟凌晨 2 点';
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    init();
+    view.screen = 'today';
+    view.prevDone = -1;
+    view.form = { name: '', start: '', end: '' };
+    view.formTouched = false;
+    staggerOnce();
+  }
+
+  document.getElementById('btnReset').addEventListener('click', function () {
+    showDialog({
+      kind: 'confirm', title: '清空全部数据',
+      text: '任务、历史、假期、成就都会删除，无法恢复。',
+      okText: '清空', danger: true, action: 'reset-all'
+    });
+  });
+
+  // 把"现在"挪到凌晨 2 点，用来验证结算时间的行为
+  document.getElementById('btnNight').addEventListener('click', function () {
+    var btn = this;
+    if (clockHourShift === 0) {
+      clockHourShift = 2 - new Date().getHours();
+      btn.textContent = '恢复真实时间';
+    } else {
+      clockHourShift = 0;
+      btn.textContent = '模拟凌晨 2 点';
+    }
+    // 只重算逻辑日期，不动任务数据
+    var d = load();
+    d.today = nowKey(d.dayStartHour);
+    save(d);
+    view.screen = 'today';
+    view.prevDone = -1;
+    render();
+  });
+
+  app.classList.add('intro');
+  setTimeout(function () { app.classList.remove('intro'); }, 700);
+  staggerOnce();
+  render();
+})();
+</script>
+</body>
+</html>

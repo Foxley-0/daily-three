@@ -1,0 +1,138 @@
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  /* app.wxss 里全局设了 border-box，那样 height 会包含 padding-bottom，
+     内容区只剩 100rpx - 安全区，图标和文字会被挤出来。这里必须用 content-box。 */
+  box-sizing: content-box;
+  height: 100rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
+  border-top: 2rpx solid #eef0f3;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 6rpx;
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.tab:active {
+  transform: scale(0.9);
+}
+
+.tab-text {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  line-height: 1;
+  color: #8a8f99;
+  transition: color 0.18s ease;
+}
+
+/* 图标统一 44rpx 画布，所有形状都收在这个方框里 */
+.ic {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+}
+
+/* ---------- 今日：实心圆 + 挖空对勾 ---------- */
+
+.t-circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40rpx;
+  height: 40rpx;
+  margin: -20rpx 0 0 -20rpx;
+  border-radius: 50%;
+  background: #8a8f99;
+  transition: background 0.18s ease;
+}
+
+.t-check {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 17rpx;
+  height: 9rpx;
+  margin: -4.5rpx 0 0 -8.5rpx;
+  border-left: 4rpx solid #ffffff;
+  border-bottom: 4rpx solid #ffffff;
+  border-radius: 1rpx;
+  transform: rotate(-45deg);
+}
+
+/* ---------- 记录：三根实心圆角柱 ---------- */
+
+.c-bar {
+  position: absolute;
+  bottom: 5rpx;
+  width: 9rpx;
+  border-radius: 4.5rpx;
+  background: #8a8f99;
+  transition: background 0.18s ease;
+}
+
+.c-bar1 { left: 5rpx; height: 16rpx; }
+.c-bar2 { left: 17.5rpx; height: 26rpx; }
+.c-bar3 { left: 30rpx; height: 36rpx; }
+
+/* ---------- 设置：圆环 + 8 颗圆角齿 ---------- */
+
+.g-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30rpx;
+  height: 30rpx;
+  margin: -15rpx 0 0 -15rpx;
+  border: 6rpx solid #8a8f99;
+  border-radius: 50%;
+  transition: border-color 0.18s ease;
+}
+
+.g-tooth {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7rpx;
+  height: 11rpx;
+  margin: -5.5rpx 0 0 -3.5rpx;
+  border-radius: 3.5rpx;
+  background: #8a8f99;
+  transition: background 0.18s ease;
+}
+
+/* 每颗齿绕图标中心旋转后向外推 16rpx，正好咬住圆环外沿 */
+.g-t1 { transform: rotate(0deg) translateY(-16rpx); }
+.g-t2 { transform: rotate(45deg) translateY(-16rpx); }
+.g-t3 { transform: rotate(90deg) translateY(-16rpx); }
+.g-t4 { transform: rotate(135deg) translateY(-16rpx); }
+.g-t5 { transform: rotate(180deg) translateY(-16rpx); }
+.g-t6 { transform: rotate(225deg) translateY(-16rpx); }
+.g-t7 { transform: rotate(270deg) translateY(-16rpx); }
+.g-t8 { transform: rotate(315deg) translateY(-16rpx); }
+
+/* ---------- 选中态：只换颜色，不变尺寸 ---------- */
+
+.tab.on .t-circle,
+.tab.on .c-bar,
+.tab.on .g-tooth {
+  background: #07c160;
+}
+
+.tab.on .g-ring {
+  border-color: #07c160;
+}
+
+.tab.on .tab-text {
+  color: #07c160;
+}

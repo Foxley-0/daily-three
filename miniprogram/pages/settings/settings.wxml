@@ -1,0 +1,110 @@
+<view class="page {{tabAnim}}">
+
+  <!-- 账号 -->
+  <view class="group-title">账号</view>
+  <view class="card">
+    <view class="acct {{item.active ? 'acct-on' : ''}}"
+          wx:for="{{accounts}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="onAccountTap"
+          hover-class="row-hover"
+          hover-stay-time="60">
+      <view class="avatar">{{item.initial}}</view>
+      <view class="acct-main">
+        <view class="acct-name">{{item.name}}<text class="acct-badge" wx:if="{{item.active}}">当前</text></view>
+        <view class="acct-sub">{{item.active ? '点一下改名' : '点一下切换过来'}}</view>
+      </view>
+      <view class="acct-del" wx:if="{{accounts.length > 1}}"
+            data-id="{{item.id}}" catchtap="onAccountDelete">删除</view>
+    </view>
+
+    <view class="acct acct-add"
+          bindtap="onAddAccount"
+          hover-class="row-hover"
+          hover-stay-time="60">
+      <view class="avatar avatar-add">＋</view>
+      <view class="acct-main">
+        <view class="acct-name acct-name-add">添加账号</view>
+        <view class="acct-sub">每个账号有自己独立的任务、历史和成就</view>
+      </view>
+    </view>
+  </view>
+  <view class="group-note">点一下切换账号，点当前账号可以改名。最多 {{maxAccounts}} 个。</view>
+
+  <!-- 规则 -->
+  <view class="group-title">规则</view>
+  <view class="card">
+    <picker mode="selector" range="{{hourLabels}}" value="{{dayStartHour}}" bindchange="onHour">
+      <view class="row">
+        <view class="row-ic ic-clock">
+          <view class="s-ring"></view>
+          <view class="s-hand-v"></view>
+          <view class="s-hand-h"></view>
+        </view>
+        <view class="row-title">每日结算时间</view>
+        <view class="row-value">{{dayStartHour}} 点</view>
+        <view class="chev">›</view>
+      </view>
+    </picker>
+
+    <picker mode="selector" range="{{minLabels}}" value="{{minTasks - 1}}" bindchange="onMin">
+      <view class="row">
+        <view class="row-ic ic-list">
+          <view class="s-line s-l1"></view>
+          <view class="s-line s-l2"></view>
+          <view class="s-line s-l3"></view>
+        </view>
+        <view class="row-title">任务栏最少几个</view>
+        <view class="row-value">{{minTasks}} 个</view>
+        <view class="chev">›</view>
+      </view>
+    </picker>
+
+    <picker mode="selector" range="{{cardLabels}}" value="{{maxCards - 1}}" bindchange="onCards">
+      <view class="row row-last">
+        <view class="row-ic ic-card">
+          <view class="s-card"></view>
+        </view>
+        <view class="row-title">补签卡最多存几张</view>
+        <view class="row-value">{{maxCards}} 张</view>
+        <view class="chev">›</view>
+      </view>
+    </picker>
+  </view>
+  <view class="group-note">结算时间之后算新的一天。默认 4 点 —— 凌晨写的任务仍然算前一天。</view>
+
+  <!-- 内容 -->
+  <view class="group-title">内容</view>
+  <view class="card">
+    <view class="row row-last" bindtap="goHoliday" hover-class="row-hover" hover-stay-time="60">
+      <view class="row-ic ic-cal">
+        <view class="s-cal"></view>
+        <view class="s-cal-bar"></view>
+      </view>
+      <view class="row-title">假期设置</view>
+      <view class="row-value">{{customCount}} 个假期</view>
+      <view class="chev">›</view>
+    </view>
+  </view>
+  <view class="group-note">假期不记录、不断签，连续打卡会自动跳过；假期里做任务还有额外加分。</view>
+
+  <!-- 现在的状态 -->
+  <view class="group-title">现在的状态</view>
+  <view class="card">
+    <view class="info-row">
+      <text class="info-label">日历上的日期</text>
+      <text class="info-value">{{calendarKey}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">现在算作</text>
+      <text class="info-value info-strong">{{currentLabel}}</text>
+    </view>
+    <view class="info-row info-last">
+      <text class="info-label">开始记录于</text>
+      <text class="info-value">{{startDateLabel}}</text>
+    </view>
+  </view>
+  <view class="group-note" wx:if="{{lateNight}}">现在是深夜时段（过了零点但还没到 {{dayStartHour}} 点），写的任务仍然算前一天。</view>
+
+</view>

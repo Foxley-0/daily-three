@@ -1,0 +1,26 @@
+# 我的工作数据，不是项目代码
+.workbuddy-ai/
+
+# 依赖
+node_modules/
+
+# 开发者工具的个人本地配置（每台机器不同，不该进仓库）
+project.private.config.json
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志
+*.log
+npm-debug.log*
+
+# NVIDIA 显卡驱动在「当前工作目录」生成的日志目录
+# （git 拉凭据管理器窗口时会触发，跟项目无关）
+NVIDIA Corporation/
+umdlogs/
+
+# JetBrains / PyCharm 的本地配置
+.idea/
+*.iml

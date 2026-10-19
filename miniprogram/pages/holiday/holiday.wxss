@@ -1,0 +1,379 @@
+/* ---------- 自定义导航栏 ---------- */
+
+.navbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 50;
+  background: #e9f7f1;
+  border-bottom: 2rpx solid rgba(31, 45, 61, 0.06);
+}
+
+.nav-inner {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 20rpx;
+}
+
+.nav-back {
+  width: 72rpx;
+  height: 72rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.nav-back-hover {
+  background: rgba(31, 45, 61, 0.06);
+}
+
+.nav-arrow {
+  width: 20rpx;
+  height: 20rpx;
+  margin-left: 8rpx;
+  border-left: 4rpx solid #1a1a1a;
+  border-bottom: 4rpx solid #1a1a1a;
+  border-radius: 2rpx;
+  transform: rotate(45deg);
+}
+
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.nav-ghost {
+  visibility: hidden;
+}
+
+.page {
+  padding: 0 32rpx 80rpx;
+  animation: pageIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---------- 月历 ---------- */
+
+.cal-card {
+  margin-top: 32rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 32rpx 24rpx 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  padding: 0 8rpx 20rpx;
+}
+
+.cal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.cal-nav {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  color: #8a8f99;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cal-nav-hover {
+  background: #f2f3f5;
+  color: #1a1a1a;
+}
+
+.cal-week {
+  display: flex;
+  padding-bottom: 8rpx;
+}
+
+.cal-week-cell {
+  width: 14.2857%;
+  text-align: center;
+  font-size: 22rpx;
+  color: #b6bac1;
+}
+
+.cal-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.cal-cell {
+  width: 14.2857%;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 上/下月补的空位，不参与点击 */
+.cal-cell.is-blank {
+  pointer-events: none;
+}
+
+.cal-day {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #1a1a1a;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+/* 选中范围：淡绿底（节假日底色在后面覆盖） */
+.cal-cell.is-selected .cal-day {
+  background: #e7f7ee;
+}
+
+/* 法定假日 */
+.cal-cell.kind-builtin .cal-day {
+  background: #e6f1fb;
+  color: #185fa5;
+  font-weight: 500;
+}
+
+/* 我的假期 */
+.cal-cell.kind-custom .cal-day {
+  background: #faeeda;
+  color: #854f0b;
+  font-weight: 500;
+}
+
+/* 过去的普通日子压淡 */
+.cal-cell.is-past.kind-normal .cal-day {
+  color: #c9ccd2;
+}
+
+/* 今天：描一圈 */
+.cal-cell.is-today .cal-day {
+  box-shadow: 0 0 0 3rpx #07c160;
+  color: #07a552;
+  font-weight: 600;
+}
+
+.cal-cell.is-today.kind-builtin .cal-day {
+  color: #185fa5;
+}
+
+.cal-cell.is-today.kind-custom .cal-day {
+  color: #854f0b;
+}
+
+.cal-legend {
+  display: flex;
+  justify-content: center;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid #f2f3f5;
+}
+
+.lg {
+  display: flex;
+  align-items: center;
+  margin: 0 18rpx;
+}
+
+.lg-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 6rpx;
+  margin-right: 10rpx;
+}
+
+.lg-builtin {
+  background: #e6f1fb;
+  border: 2rpx solid #b5d4f4;
+}
+
+.lg-custom {
+  background: #faeeda;
+  border: 2rpx solid #efc98b;
+}
+
+.lg-today {
+  background: #ffffff;
+  border: 3rpx solid #07c160;
+}
+
+.lg-text {
+  font-size: 22rpx;
+  color: #8a8f99;
+}
+
+.cal-note {
+  margin-top: 18rpx;
+  font-size: 21rpx;
+  line-height: 1.6;
+  color: #a9aeb6;
+  text-align: center;
+}
+
+/* ---------- 添加表单 ---------- */
+
+.card {
+  margin-top: 24rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  height: 96rpx;
+  border-bottom: 2rpx solid #f2f3f5;
+}
+
+.label {
+  width: 110rpx;
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #8a8f99;
+}
+
+.input {
+  flex: 1;
+  font-size: 30rpx;
+  color: #1a1a1a;
+}
+
+.ph {
+  color: #c3c7cd;
+}
+
+.picker {
+  flex: 1;
+  font-size: 30rpx;
+  color: #1a1a1a;
+}
+
+.days {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.submit {
+  margin-top: 28rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+  background: #07c160;
+  color: #ffffff;
+  font-size: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.submit-hover {
+  transform: scale(0.985);
+  background: #06ad56;
+}
+
+.hint {
+  margin-top: 20rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #a9aeb6;
+}
+
+/* ---------- 列表 ---------- */
+
+.section-title {
+  margin: 44rpx 8rpx 20rpx;
+  font-size: 26rpx;
+  color: #8a8f99;
+}
+
+.empty {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 48rpx 32rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #a9aeb6;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 20rpx;
+  animation: itemIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 30rpx;
+  color: #1a1a1a;
+}
+
+.item-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.item-del {
+  flex-shrink: 0;
+  padding: 10rpx 22rpx;
+  border-radius: 100rpx;
+  background: #f7f8fa;
+  font-size: 24rpx;
+  color: #8a8f99;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.item-del:hover {
+  color: #e64340;
+  background: #fdeceb;
+}
+
+.note {
+  margin-top: 24rpx;
+  padding: 0 8rpx;
+  font-size: 22rpx;
+  line-height: 1.7;
+  color: #a9aeb6;
+}
+
+@keyframes itemIn {
+  from { opacity: 0; transform: translateY(16rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}

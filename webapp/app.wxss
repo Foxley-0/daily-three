@@ -1,0 +1,43 @@
+page {
+  /* 顶部一层很淡的绿，往下过渡到基础灰 —— 比纯平底有层次，又不抢内容 */
+  background: linear-gradient(180deg, #e9f7f1 0%, #f2f6f6 380rpx, #f4f6f8 100%);
+  background-repeat: no-repeat;
+  color: #1a1a1a;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 30rpx;
+  -webkit-font-smoothing: antialiased;
+}
+
+view, text, input {
+  box-sizing: border-box;
+}
+
+/* 各级页面进入时的统一过渡 */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateX(28rpx); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/*
+ * 底部导航切页的转场。
+ * wx.switchTab 本身没有动画（原生 tabBar 也没有），所以切完之后由目标页
+ * 在 onShow 里挂上对应的类，手动播一次。动画结束后要把类摘掉，
+ * 否则下次切回来不会重播（元素没重建，动画不会重新触发）。
+ */
+.tab-in-forward {
+  animation: tabInRight 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tab-in-back {
+  animation: tabInLeft 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tabInRight {
+  from { opacity: 0; transform: translateX(26rpx); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes tabInLeft {
+  from { opacity: 0; transform: translateX(-26rpx); }
+  to { opacity: 1; transform: translateX(0); }
+}

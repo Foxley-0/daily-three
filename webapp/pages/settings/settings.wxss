@@ -1,0 +1,289 @@
+.page {
+  padding: 24rpx 32rpx 200rpx;
+}
+
+/* ---------- 账号 ---------- */
+
+.acct {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid #f2f3f5;
+}
+
+.acct:last-child {
+  border-bottom: none;
+}
+
+/* 添加账号那一行，和上面的账号列表拉开一点 */
+.acct-add {
+  margin-top: 6rpx;
+}
+
+.acct-on .acct-name {
+  color: #07a552;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  flex-shrink: 0;
+  margin-right: 22rpx;
+  border-radius: 50%;
+  background: #07c160;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-add {
+  background: #eef0f3;
+  color: #8a8f99;
+  font-size: 34rpx;
+  font-weight: 400;
+}
+
+.acct-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.acct-name {
+  font-size: 31rpx;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acct-name-add {
+  color: #576b95;
+}
+
+.acct-sub {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #a9aeb6;
+}
+
+.acct-badge {
+  margin-left: 12rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 100rpx;
+  background: #e7f7ee;
+  color: #07a552;
+  font-size: 20rpx;
+  vertical-align: middle;
+}
+
+.acct-del {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 100rpx;
+  background: #f7f8fa;
+  font-size: 23rpx;
+  color: #a9aeb6;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.acct-del:hover {
+  color: #e64340;
+  background: #fdeceb;
+}
+
+/* ---------- 分组 ---------- */
+
+.group-title {
+  margin: 36rpx 8rpx 14rpx;
+  font-size: 25rpx;
+  color: #8a8f99;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 0 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+}
+
+.group-note {
+  margin: 14rpx 8rpx 0;
+  font-size: 22rpx;
+  line-height: 1.65;
+  color: #a9aeb6;
+}
+
+/* ---------- 设置行 ---------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  height: 110rpx;
+  border-bottom: 2rpx solid #f2f3f5;
+}
+
+.row-last {
+  border-bottom: none;
+}
+
+.row-hover {
+  opacity: 0.55;
+}
+
+/* 左侧彩色图标方块 */
+.row-ic {
+  position: relative;
+  width: 56rpx;
+  height: 56rpx;
+  flex-shrink: 0;
+  margin-right: 22rpx;
+  border-radius: 16rpx;
+}
+
+.ic-clock { background: #f0a020; }
+.ic-list { background: #07c160; }
+.ic-card { background: #7f77dd; }
+.ic-cal { background: #378add; }
+
+.row-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  color: #1a1a1a;
+}
+
+.row-value {
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #8a8f99;
+}
+
+.chev {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  font-size: 32rpx;
+  line-height: 1;
+  color: #c9ccd2;
+}
+
+/* ---------- 图标里的白色图形 ---------- */
+
+/* 时钟：圆环 + 时针分针 */
+.s-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 32rpx;
+  height: 32rpx;
+  margin: -16rpx 0 0 -16rpx;
+  border: 4rpx solid #ffffff;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.s-hand-v {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4rpx;
+  height: 10rpx;
+  margin: -10rpx 0 0 -2rpx;
+  border-radius: 2rpx;
+  background: #ffffff;
+}
+
+.s-hand-h {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10rpx;
+  height: 4rpx;
+  margin: -2rpx 0 0 0;
+  border-radius: 2rpx;
+  background: #ffffff;
+}
+
+/* 列表：三根递短的横线 */
+.s-line {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 4rpx;
+  margin-left: -13rpx;
+  border-radius: 2rpx;
+  background: #ffffff;
+}
+
+.s-l1 { margin-top: -12rpx; width: 26rpx; }
+.s-l2 { margin-top: -2rpx; width: 20rpx; }
+.s-l3 { margin-top: 8rpx; width: 14rpx; }
+
+/* 卡片：圆角矩形 */
+.s-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 32rpx;
+  height: 24rpx;
+  margin: -12rpx 0 0 -16rpx;
+  border: 4rpx solid #ffffff;
+  border-radius: 6rpx;
+  box-sizing: border-box;
+}
+
+/* 日历：圆角矩形 + 顶部横线 */
+.s-cal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 32rpx;
+  height: 30rpx;
+  margin: -15rpx 0 0 -16rpx;
+  border: 4rpx solid #ffffff;
+  border-radius: 6rpx;
+  box-sizing: border-box;
+}
+
+.s-cal-bar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 32rpx;
+  height: 4rpx;
+  margin: -11rpx 0 0 -16rpx;
+  background: #ffffff;
+}
+
+/* ---------- 状态信息行 ---------- */
+
+.info-row {
+  display: flex;
+  align-items: baseline;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid #f2f3f5;
+}
+
+.info-last {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 28rpx;
+  color: #8a8f99;
+}
+
+.info-value {
+  margin-left: auto;
+  font-size: 28rpx;
+  color: #1a1a1a;
+}
+
+.info-strong {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #07a552;
+}

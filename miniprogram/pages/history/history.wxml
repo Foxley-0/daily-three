@@ -1,0 +1,133 @@
+<view class="page {{tabAnim}}">
+
+  <!-- 月历 -->
+  <view class="cal-card">
+    <view class="cal-head">
+      <view class="cal-nav" bindtap="prevMonth" hover-class="cal-nav-hover" hover-stay-time="60">‹</view>
+      <view class="cal-title">{{monthLabel}}</view>
+      <view class="cal-nav" bindtap="nextMonth" hover-class="cal-nav-hover" hover-stay-time="60">›</view>
+    </view>
+
+    <view class="cal-week">
+      <view class="cal-week-cell" wx:for="{{weekdays}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="cal-grid">
+      <view class="cal-cell {{item.blank ? 'is-blank' : 'k-' + item.kind}} {{item.today ? 'is-today' : ''}} {{item.future ? 'is-future' : ''}} {{item.selected ? 'is-selected' : ''}} {{item.restFull ? 'is-restfull' : ''}}"
+            wx:for="{{cells}}"
+            wx:key="idx"
+            data-key="{{item.key}}"
+            bindtap="tapDay">
+        <view class="cal-day" wx:if="{{!item.blank}}">
+          <text>{{item.day}}</text>
+          <view class="today-dot" wx:if="{{item.today}}"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="cal-legend">
+      <view class="lg"><view class="lg-dot lg-full"></view><text class="lg-text">全勤</text></view>
+      <view class="lg"><view class="lg-dot lg-part"></view><text class="lg-text">部分</text></view>
+      <view class="lg"><view class="lg-dot lg-miss"></view><text class="lg-text">缺勤</text></view>
+      <view class="lg"><view class="lg-dot lg-rest"></view><text class="lg-text">假期</text></view>
+      <view class="lg"><view class="lg-dot lg-makeup"></view><text class="lg-text">补签</text></view>
+    </view>
+
+    <view class="cal-note">点日历上的任意一天，下面就会显示那天的记录。</view>
+  </view>
+
+  <!-- 选中那天的详情 -->
+  <view class="detail-card">
+    <view class="detail-head">
+      <text class="detail-date">{{detail.label}}</text>
+      <text class="detail-status st-{{detail.statusClass}}" wx:if="{{!detail.empty}}">{{detail.statusText}}</text>
+    </view>
+
+    <view class="detail-empty" wx:if="{{detail.empty}}">{{detail.emptyText}}</view>
+
+    <block wx:else>
+      <view class="detail-label">那天做了什么</view>
+      <view class="detail-empty" wx:if="{{!detail.hasTasks}}">
+        {{detail.isToday ? '今天还没安排任务' : '那天没有安排任务'}}
+      </view>
+      <view class="dtask" wx:for="{{detail.tasks}}" wx:key="index">
+        <view class="dtask-mark {{item.done ? 'on' : ''}}"></view>
+        <text class="dtask-text {{item.done ? 'done' : ''}}">{{item.text}}</text>
+      </view>
+
+      <view class="detail-label">那天拿到了什么</view>
+      <view class="reward-row" wx:if="{{detail.rewards.length > 0}}">
+        <view class="reward rw-{{item.kind}}" wx:for="{{detail.rewards}}" wx:key="index">{{item.text}}</view>
+      </view>
+      <view class="detail-empty" wx:else>这天没有奖励</view>
+
+      <view class="makeup-btn" wx:if="{{detail.canMakeup}}" bindtap="makeupDay" hover-class="makeup-hover" hover-stay-time="60">
+        用 1 张补签卡补回这天
+      </view>
+    </block>
+  </view>
+
+  <!-- 统计 -->
+  <view class="stat-card">
+    <view class="stat">
+      <view class="stat-num">{{streak}}</view>
+      <view class="stat-label">连续打卡</view>
+    </view>
+    <view class="divider"></view>
+    <view class="stat">
+      <view class="stat-num">{{totalFull}}</view>
+      <view class="stat-label">累计全勤</view>
+    </view>
+    <view class="divider"></view>
+    <view class="stat">
+      <view class="stat-num">{{longestStreak}}</view>
+      <view class="stat-label">最长连续</view>
+    </view>
+  </view>
+
+  <view class="stat-card stat-card-second">
+    <view class="stat">
+      <view class="stat-num stat-num-amber">{{holidayPoints}}</view>
+      <view class="stat-label">假期分</view>
+    </view>
+    <view class="divider"></view>
+    <view class="stat">
+      <view class="stat-num">{{makeupCards}}</view>
+      <view class="stat-label">补签卡</view>
+    </view>
+    <view class="divider"></view>
+    <view class="stat">
+      <view class="stat-num stat-num-plain">{{restDays}}</view>
+      <view class="stat-label">假期天数</view>
+    </view>
+  </view>
+
+  <view class="summary">{{summaryText}}</view>
+
+  <!-- 成就 -->
+  <view class="section-title">
+    <text>成就</text>
+    <text class="section-extra">已解锁 {{achUnlocked}} / {{achTotal}}</text>
+  </view>
+  <view class="ach-card">
+    <view class="ach-hint">攒到档位就点亮一个，永久记录，不会因为断签丢掉。</view>
+    <view class="ach-row" wx:for="{{achGroups}}" wx:key="type">
+      <view class="ach-head">
+        <text class="ach-label">{{item.label}}</text>
+        <text class="ach-current">{{item.current}}<text class="ach-unit">{{item.unit}}</text></text>
+      </view>
+      <view class="ach-next">{{item.nextText}}</view>
+      <view class="ach-chips">
+        <view class="ach-chip ach-chip-{{chip.state}}"
+              wx:for="{{item.items}}"
+              wx:for-item="chip"
+              wx:key="value">{{chip.value}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="links">
+    <view class="link" bindtap="goToday">‹ 回到今天</view>
+  </view>
+
+</view>

@@ -1,0 +1,575 @@
+.page {
+  padding: 40rpx 32rpx 200rpx;
+}
+
+/* ---------- 顶部日期 ---------- */
+
+.head {
+  padding: 8rpx 8rpx 36rpx;
+  animation: fadeUp 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.greet {
+  margin-bottom: 10rpx;
+  font-size: 26rpx;
+  color: #07a552;
+}
+
+.date {
+  font-size: 56rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  line-height: 1.2;
+}
+
+.weekday {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #8a8f99;
+}
+
+.late-night {
+  display: inline-block;
+  margin-top: 18rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 100rpx;
+  background: #eef4ff;
+  font-size: 21rpx;
+  color: #4a6fa5;
+}
+
+/* ---------- 进度卡片 ---------- */
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 36rpx 32rpx 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(31, 45, 61, 0.05);
+  animation: fadeUp 0.36s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+
+.card-celebrate {
+  animation: cardPulse 0.9s ease;
+}
+
+/* 假期横幅 */
+.rest-banner {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding: 14rpx 20rpx;
+  border-radius: 16rpx;
+  background: #eef4ff;
+}
+
+.rest-dot {
+  width: 12rpx;
+  height: 12rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #185fa5;
+  margin-right: 14rpx;
+}
+
+.rest-text {
+  font-size: 23rpx;
+  color: #4a6fa5;
+  line-height: 1.4;
+}
+
+.progress-row {
+  display: flex;
+  align-items: baseline;
+}
+
+.progress-num {
+  font-size: 46rpx;
+  font-weight: 600;
+  color: #07c160;
+  line-height: 1;
+}
+
+.num-anim {
+  animation: numPop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.progress-label {
+  margin-left: 14rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.chip {
+  margin-left: auto;
+  padding: 6rpx 18rpx;
+  border-radius: 100rpx;
+  background: #e7f7ee;
+  color: #07a552;
+  font-size: 22rpx;
+  animation: chipIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
+}
+
+.bar {
+  margin-top: 26rpx;
+  height: 12rpx;
+  border-radius: 6rpx;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.bar-inner {
+  height: 100%;
+  border-radius: 6rpx;
+  background: #07c160;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bar-glow {
+  animation: barGlow 1s ease;
+}
+
+.tip {
+  margin-top: 22rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+/* 全部完成时的小碎点 */
+.burst {
+  position: absolute;
+  left: 110rpx;
+  top: 58rpx;
+  width: 0;
+  height: 0;
+}
+
+.dot {
+  position: absolute;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+}
+
+.dot1 { background: #07c160; animation: burst1 0.9s ease-out forwards; }
+.dot2 { background: #34d27b; animation: burst2 0.9s ease-out forwards; }
+.dot3 { background: #ffd166; animation: burst3 0.9s ease-out forwards; }
+.dot4 { background: #07c160; animation: burst4 0.9s ease-out forwards; }
+.dot5 { background: #34d27b; animation: burst5 0.9s ease-out forwards; }
+.dot6 { background: #ffd166; animation: burst6 0.9s ease-out forwards; }
+
+/* ---------- 任务列表 ---------- */
+
+.list {
+  margin-top: 28rpx;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 6rpx 24rpx rgba(31, 45, 61, 0.04);
+}
+
+.task-stagger {
+  animation: taskIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.task-enter {
+  overflow: hidden;
+  animation: taskEnter 0.45s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.task-leave {
+  overflow: hidden;
+  animation: taskLeave 0.3s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* 勾选圆圈 */
+.check {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2rpx solid #d5d8dd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.check-on {
+  background: #07c160;
+  border-color: #07c160;
+  animation: checkPop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.check-hover {
+  transform: scale(0.88);
+}
+
+.tick {
+  width: 20rpx;
+  height: 11rpx;
+  margin-top: -4rpx;
+  border-left: 4rpx solid #ffffff;
+  border-bottom: 4rpx solid #ffffff;
+  transform: rotate(-45deg);
+  animation: tickIn 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) 0.06s both;
+}
+
+.ripple {
+  position: absolute;
+  left: -2rpx;
+  top: -2rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  border: 2rpx solid #07c160;
+  opacity: 0;
+  animation: rippleOut 0.5s ease-out 0.02s;
+}
+
+/* 已完成：划线文本 */
+.task-main {
+  flex: 1;
+  min-width: 0;
+  margin: 0 20rpx;
+  overflow: hidden;
+}
+
+.task-text-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.task-text {
+  display: block;
+  max-width: 100%;
+  font-size: 30rpx;
+  line-height: 44rpx;
+  color: #b6bac1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: textFade 0.3s ease both;
+}
+
+.strike {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 2rpx;
+  width: 0;
+  background: #b6bac1;
+  animation: strikeIn 0.3s ease 0.06s forwards;
+}
+
+.task-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0 20rpx;
+  font-size: 30rpx;
+  color: #1a1a1a;
+  height: 44rpx;
+  line-height: 44rpx;
+}
+
+.ph {
+  color: #c3c7cd;
+}
+
+.del {
+  width: 48rpx;
+  height: 48rpx;
+  flex-shrink: 0;
+  line-height: 44rpx;
+  text-align: center;
+  font-size: 40rpx;
+  color: #c3c7cd;
+  transition: color 0.15s ease;
+}
+
+/* ---------- 底部操作 ---------- */
+
+.add {
+  margin-top: 8rpx;
+  height: 96rpx;
+  border-radius: 24rpx;
+  border: 2rpx dashed #d5d8dd;
+  background: #ffffff;
+  color: #576b95;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.add-hover {
+  transform: scale(0.985);
+  border-color: #b9c2cf;
+}
+
+/* ---------- 第一次进来：起名字 ---------- */
+
+.name-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  padding: 0 64rpx;
+  background: rgba(20, 28, 38, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: maskIn 0.24s ease both;
+}
+
+.name-card {
+  width: 100%;
+  padding: 56rpx 44rpx 40rpx;
+  background: #ffffff;
+  border-radius: 32rpx;
+  animation: cardPop 0.38s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.name-emoji {
+  position: relative;
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 auto 30rpx;
+}
+
+.ne-circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 88rpx;
+  height: 88rpx;
+  margin: -44rpx 0 0 -44rpx;
+  border-radius: 50%;
+  background: #07c160;
+}
+
+.ne-check {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38rpx;
+  height: 20rpx;
+  margin: -10rpx 0 0 -19rpx;
+  border-left: 8rpx solid #ffffff;
+  border-bottom: 8rpx solid #ffffff;
+  border-radius: 3rpx;
+  transform: rotate(-45deg);
+}
+
+.name-title {
+  text-align: center;
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.name-sub {
+  margin-top: 14rpx;
+  text-align: center;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #8a8f99;
+}
+
+.name-input {
+  margin-top: 38rpx;
+  height: 96rpx;
+  padding: 0 28rpx;
+  background: #f5f6f8;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+  text-align: center;
+}
+
+.name-ph {
+  color: #c3c7cd;
+}
+
+.name-btn {
+  margin-top: 28rpx;
+  height: 92rpx;
+  border-radius: 20rpx;
+  background: #07c160;
+  color: #ffffff;
+  font-size: 31rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.name-btn-off {
+  background: #c8e9d6;
+}
+
+.name-skip {
+  margin-top: 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #a9aeb6;
+  padding: 12rpx 0;
+  transition: color 0.15s ease;
+}
+
+.name-skip-hover {
+  color: #576b95;
+}
+
+@keyframes maskIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cardPop {
+  from { opacity: 0; transform: scale(0.9) translateY(24rpx); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ---------- 关键帧 ---------- */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes taskIn {
+  from { opacity: 0; transform: translateY(16rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 新增：从 0 高度展开，把下面的内容顺下去，内容从下方滑到位。
+   max-height 必须贴着真实行高（28+44+28 = 100rpx），
+   给大了会让动画前半程"空转"，看起来像突然跳一下。 */
+@keyframes taskEnter {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    transform: translateY(14rpx);
+  }
+  to {
+    opacity: 1;
+    max-height: 100rpx;
+    padding-top: 28rpx;
+    padding-bottom: 28rpx;
+    margin-bottom: 20rpx;
+    transform: translateY(0);
+  }
+}
+
+/* 删除：对称地收回去，下方内容平滑上移 */
+@keyframes taskLeave {
+  from {
+    opacity: 1;
+    max-height: 100rpx;
+    padding-top: 28rpx;
+    padding-bottom: 28rpx;
+    margin-bottom: 20rpx;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    transform: translateX(48rpx);
+  }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+@keyframes tickIn {
+  from { transform: rotate(-45deg) scale(0.2); opacity: 0; }
+  to { transform: rotate(-45deg) scale(1); opacity: 1; }
+}
+
+@keyframes rippleOut {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+
+@keyframes strikeIn {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes textFade {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+@keyframes numPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cardPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(7, 193, 96, 0.3); }
+  35% { transform: scale(1.015); box-shadow: 0 0 0 12rpx rgba(7, 193, 96, 0.14); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(7, 193, 96, 0); }
+}
+
+@keyframes barGlow {
+  0%, 100% { background: #07c160; }
+  50% { background: #34d27b; }
+}
+
+@keyframes chipIn {
+  from { opacity: 0; transform: translateY(-8rpx) scale(0.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes burst1 {
+  from { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  to { opacity: 0; transform: translate(-96rpx, -52rpx) scale(1); }
+}
+
+@keyframes burst2 {
+  from { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  to { opacity: 0; transform: translate(-40rpx, -76rpx) scale(1); }
+}
+
+@keyframes burst3 {
+  from { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  to { opacity: 0; transform: translate(40rpx, -76rpx) scale(1); }
+}
+
+@keyframes burst4 {
+  from { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  to { opacity: 0; transform: translate(96rpx, -52rpx) scale(1); }
+}
+
+@keyframes burst5 {
+  from { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  to { opacity: 0; transform: translate(110rpx, 10rpx) scale(1); }
+}
+
+@keyframes burst6 {
+  from { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  to { opacity: 0; transform: translate(-110rpx, 10rpx) scale(1); }
+}

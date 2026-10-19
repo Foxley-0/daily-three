@@ -1,0 +1,36 @@
+<view class="tabbar">
+  <view class="tab {{selected === index ? 'on' : ''}}"
+        wx:for="{{list}}"
+        wx:key="pagePath"
+        data-index="{{index}}"
+        bindtap="switchTab">
+
+    <!-- 今日：实心圆 + 挖空对勾 -->
+    <view class="ic" wx:if="{{item.icon === 'today'}}">
+      <view class="t-circle"></view>
+      <view class="t-check"></view>
+    </view>
+
+    <!-- 记录：三根实心圆角柱 -->
+    <view class="ic" wx:elif="{{item.icon === 'chart'}}">
+      <view class="c-bar c-bar1"></view>
+      <view class="c-bar c-bar2"></view>
+      <view class="c-bar c-bar3"></view>
+    </view>
+
+    <!-- 设置：圆环 + 8 颗圆角齿 -->
+    <view class="ic" wx:else>
+      <view class="g-tooth g-t1"></view>
+      <view class="g-tooth g-t2"></view>
+      <view class="g-tooth g-t3"></view>
+      <view class="g-tooth g-t4"></view>
+      <view class="g-tooth g-t5"></view>
+      <view class="g-tooth g-t6"></view>
+      <view class="g-tooth g-t7"></view>
+      <view class="g-tooth g-t8"></view>
+      <view class="g-ring"></view>
+    </view>
+
+    <view class="tab-text">{{item.text}}</view>
+  </view>
+</view>
