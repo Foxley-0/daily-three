@@ -847,6 +847,55 @@
       rate: totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0
     };
   }
+  /* ---------- 给 APK 通知模块用的数据钩子 ----------
+     套壳成 App 后，notify.js 会调 getReminderContext() 拿当天数据，
+     交给 reminder.js 生成智能文案（"连续 8 天要断了"这类）。
+     浏览器预览时它只是挂在那儿，不影响任何界面和逻辑。 */
+  window.DailyData = {
+    getReminderContext: function () {
+      var data = load();
+      var info = todayInfo(data);
+      var d = derived(data);
+
+      // 昨天
+      var yRec = dayRecord(data, shiftKey(data.today, -1)) || { total: 0, done: 0, rest: false };
+
+      // 最近 7 天（含今天）完成率，假期不计入
+      var wTotal = 0, wDone = 0;
+      for (var i = 0; i < 7; i++) {
+        var r = dayRecord(data, shiftKey(data.today, -i));
+        if (!r || r.rest) continue;
+        wTotal += r.total || 0;
+        wDone += r.done || 0;
+      }
+
+      // 提醒设置（阶段 3 才会有界面，现在读默认值）
+      var rm = (data.reminder && typeof data.reminder === 'object') ? data.reminder : {};
+      var target = rm.target === undefined ? 'all' : rm.target;
+
+      var targetText = '';
+      var targetDone = false;
+      if (target !== 'all') {
+        var t = filledTasks(data.tasks)[Number(target)];
+        if (t) { targetText = t.text.trim(); targetDone = !!t.done; }
+      }
+
+      return {
+        time: rm.time || '22:30',
+        isSunday: parseKey(data.today).getDay() === 0,
+        today: info,
+        yesterday: { total: yRec.total || 0, done: yRec.done || 0, rest: !!yRec.rest },
+        streak: d.streak,
+        totalFull: d.totalFull,
+        week: { total: wTotal, done: wDone, rate: wTotal ? Math.round(wDone / wTotal * 100) : 0 },
+        target: target,
+        targetText: targetText,
+        targetDone: targetDone,
+        weekly: rm.weekly !== false
+      };
+    }
+  };
+
   function refreshUnlocked(data) {
     var d = derived(data);
     var today = data.today;
