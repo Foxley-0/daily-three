@@ -145,6 +145,19 @@
   .ic-list { background: #07c160; }
   .ic-card { background: #7f77dd; }
   .ic-cal { background: #378add; }
+  .ic-bell { background: #e64340; }
+  .s-bell {
+    position: absolute; left: 50%; top: 50%; width: 11px; height: 10px;
+    margin: -8px 0 0 -5.5px; border-radius: 5.5px 5.5px 1px 1px; background: #fff;
+  }
+  .s-bell-base {
+    position: absolute; left: 50%; top: 50%; width: 15px; height: 2px;
+    margin: 3px 0 0 -7.5px; border-radius: 1px; background: #fff;
+  }
+  .s-bell-dot {
+    position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+    margin: 6px 0 0 -2px; border-radius: 50%; background: #fff;
+  }
   .row-title { flex: 1; min-width: 0; font-size: 15px; }
   .row-value { flex-shrink: 0; font-size: 14px; color: #8a8f99; }
   .chev { flex-shrink: 0; margin-left: 6px; font-size: 16px; line-height: 1; color: #c9ccd2; }
@@ -881,6 +894,7 @@
       }
 
       return {
+        enabled: !!rm.enabled,
         time: rm.time || '22:30',
         isSunday: parseKey(data.today).getDay() === 0,
         today: info,
@@ -940,6 +954,13 @@
     if (!Array.isArray(out.tasks)) out.tasks = base.tasks;
     out.tasks = padToMin(out.tasks, out.minTasks);
     if (typeof out.makeupCards !== 'number') out.makeupCards = 0;
+
+    // 提醒设置（App 版才有实际作用；网页版只是存着）
+    if (!out.reminder || typeof out.reminder !== 'object') out.reminder = {};
+    if (typeof out.reminder.enabled !== 'boolean') out.reminder.enabled = false;
+    if (typeof out.reminder.time !== 'string' || !/^\d{1,2}:\d{1,2}$/.test(out.reminder.time)) out.reminder.time = '22:30';
+    if (out.reminder.target === undefined) out.reminder.target = 'all';
+    if (typeof out.reminder.weekly !== 'boolean') out.reminder.weekly = true;
     if (typeof out.makeupUsed !== 'number') out.makeupUsed = 0;
     if (typeof out.lastGrantStreak !== 'number') out.lastGrantStreak = 0;
     if (!out.profile || typeof out.profile !== 'object') out.profile = { name: '', since: out.today };
@@ -1853,6 +1874,28 @@
     html += '</div>';
     html += '<div class="group-note">结算时间之后算新的一天。默认 4 点 —— 凌晨写的任务仍然算前一天。</div>';
 
+    /* 提醒 */
+    var rm = data.reminder || {};
+    var rmTargetLabel = rm.target === 'all' || rm.target === undefined
+      ? '全部'
+      : '第 ' + (Number(rm.target) + 1) + ' 件';
+
+    html += '<div class="group-title">提醒</div>';
+    html += '<div class="card pad-0">';
+
+    html += '<div class="row" data-act="toggle-reminder"><div class="row-ic ic-bell"><div class="s-bell"></div><div class="s-bell-base"></div><div class="s-bell-dot"></div></div>';
+    html += '<div class="row-title">每日提醒</div><div class="row-value">' + (rm.enabled ? '已开' : '已关') + '</div><div class="chev">›</div></div>';
+
+    html += '<div class="row" data-act="open-sheet" data-kind="rtime"><div class="row-ic ic-clock"><div class="s-ring"></div><div class="s-hand-v"></div><div class="s-hand-h"></div></div>';
+    html += '<div class="row-title">提醒时间</div><div class="row-value">' + (rm.time || '22:30') + '</div><div class="chev">›</div></div>';
+
+    html += '<div class="row" data-act="open-sheet" data-kind="rtarget"><div class="row-ic ic-list"><div class="s-line s-l1"></div><div class="s-line s-l2"></div><div class="s-line s-l3"></div></div>';
+    html += '<div class="row-title">提醒哪一件</div><div class="row-value">' + rmTargetLabel + '</div><div class="chev">›</div></div>';
+
+    html += '</div>';
+    html += '<div class="group-note">只有 App 版会真的推送提醒，网页版只保存设置。' +
+            (rm.enabled ? '现在每天 ' + (rm.time || '22:30') + ' 提醒你。' : '打开后每天到点提醒你打卡。') + '</div>';
+
     /* 内容 */
     html += '<div class="group-title">内容</div>';
     html += '<div class="card pad-0">';
@@ -1907,6 +1950,22 @@
       title = '任务栏最少几个';
       selected = d.minTasks;
       for (i = 1; i <= 10; i++) options.push({ value: i, label: i + ' 个' });
+    } else if (kind === 'rtime') {
+      title = '提醒时间';
+      var rmT = d.reminder || {};
+      selected = rmT.time || '22:30';
+      // 07:00 ~ 23:30，每半小时一档
+      for (i = 7 * 60; i <= 23 * 60 + 30; i += 30) {
+        var hh = Math.floor(i / 60), mi = i % 60;
+        var v = (hh < 10 ? '0' : '') + hh + ':' + (mi < 10 ? '0' : '') + mi;
+        options.push({ value: v, label: v + (i < 18 * 60 ? '　早间' : '') });
+      }
+    } else if (kind === 'rtarget') {
+      title = '提醒哪一件';
+      var rmG = d.reminder || {};
+      selected = (rmG.target === undefined || rmG.target === 'all') ? -1 : Number(rmG.target);
+      options.push({ value: -1, label: '全部（只说还差几件）' });
+      for (i = 0; i < 3; i++) options.push({ value: i, label: '第 ' + (i + 1) + ' 件' });
     } else {
       title = '补签卡最多存几张';
       selected = d.maxCards;
@@ -1917,8 +1976,40 @@
     render();
   }
 
-  function applyOption(kind, value) {
+  /** 设置改了之后，让 App 里的通知重新排一次（网页版没有这个对象，直接跳过） */
+  function refreshNotification() {
+    if (!window.DailyNotify || typeof window.DailyNotify.refresh !== 'function') return;
+    try {
+      var d = load();
+      var rm = d.reminder || {};
+      if (!rm.enabled) {
+        if (typeof window.DailyNotify.cancel === 'function') window.DailyNotify.cancel();
+        return;
+      }
+      var parts = String(rm.time || '22:30').split(':');
+      window.DailyNotify.refresh({ hour: Number(parts[0]), minute: Number(parts[1]) });
+    } catch (e) {
+      console.warn('[reminder] 刷新通知失败', e);
+    }
+  }
+
+  function applyOption(kind, raw) {
     var d = load();
+    var value = Number(raw);
+
+    if (kind === 'rtime') {
+      d.reminder.time = String(raw);
+      save(d);
+      refreshNotification();
+      return;
+    }
+    if (kind === 'rtarget') {
+      d.reminder.target = value < 0 ? 'all' : value;
+      save(d);
+      refreshNotification();
+      return;
+    }
+
     if (kind === 'hour') setDayStartHour(d, value);
     else if (kind === 'min') setMinTasks(d, value);
     else if (kind === 'cards') setMaxCards(d, value);
@@ -2034,8 +2125,15 @@
     } else if (act === 'open-sheet') {
       openSheet(el.dataset.kind);
     } else if (act === 'pick-opt') {
-      applyOption(view.sheet ? view.sheet.kind : '', Number(el.dataset.value));
+      // 传原始字符串：提醒时间要 "22:30" 这种，不能强转成数字
+      applyOption(view.sheet ? view.sheet.kind : '', el.dataset.value);
       view.sheet = null;
+      render();
+    } else if (act === 'toggle-reminder') {
+      var dR = load();
+      dR.reminder.enabled = !dR.reminder.enabled;
+      save(dR);
+      refreshNotification();
       render();
     } else if (act === 'close-sheet') {
       // 点面板内部不关，点遮罩才关

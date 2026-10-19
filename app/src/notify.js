@@ -93,9 +93,15 @@
       })
   }
 
+  /** 取消提醒 */
+  function cancel() {
+    if (!LocalNotifications) return Promise.resolve()
+    return LocalNotifications.cancel({ notifications: [{ id: ID }] }).catch(function () {})
+  }
+
   /**
    * 重新排一次。
-   * 每次打开 App 或改完设置都该调一下 —— 文案会跟着数据变。
+   * 每次打开 App 或改完设置都该调一下 —— 文案和时刻都会跟着变。
    */
   function refresh(opts) {
     opts = opts || {}
@@ -105,12 +111,29 @@
     var content = buildContent()
     if (!content) {
       // 明确表示今天不该发（比如放假），取消掉
-      if (LocalNotifications) {
-        return LocalNotifications.cancel({ notifications: [{ id: ID }] }).catch(function () {})
-      }
-      return Promise.resolve()
+      return cancel()
     }
     return schedule(hour, minute, content.title, content.body)
+  }
+
+  /** 从页面拿用户的提醒设置（没有就用默认） */
+  function readSettings() {
+    var hook = window.DailyData
+    if (!hook || typeof hook.getReminderContext !== 'function') {
+      return { enabled: true, hour: DEFAULT_HOUR, minute: DEFAULT_MINUTE }
+    }
+    try {
+      var ctx = hook.getReminderContext()
+      var parts = String(ctx.time || '22:30').split(':')
+      return {
+        enabled: ctx.enabled !== false,
+        hour: Number(parts[0]),
+        minute: Number(parts[1])
+      }
+    } catch (e) {
+      console.warn('[notify] 读取设置失败，用默认值', e)
+      return { enabled: true, hour: DEFAULT_HOUR, minute: DEFAULT_MINUTE }
+    }
   }
 
   function init() {
@@ -127,10 +150,17 @@
         console.warn('[notify] 用户没给通知权限')
         return
       }
+      var st = readSettings()
       return ensureChannel().then(function () {
-        return refresh()
+        if (!st.enabled) {
+          console.log('[notify] 用户在设置里关掉了提醒')
+          return cancel()
+        }
+        return refresh({ hour: st.hour, minute: st.minute })
       }).then(function () {
-        console.log('[notify] 已排好每天 ' + DEFAULT_HOUR + ':' + DEFAULT_MINUTE + ' 的提醒')
+        if (st.enabled) {
+          console.log('[notify] 已排好每天 ' + st.hour + ':' + st.minute + ' 的提醒')
+        }
       })
     })
   }
@@ -144,6 +174,7 @@
   window.DailyNotify = {
     init: init,
     refresh: refresh,
+    cancel: cancel,
     isApp: isApp
   }
 })()
