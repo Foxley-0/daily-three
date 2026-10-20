@@ -1352,14 +1352,17 @@
       for (var fi = 0; fi < ins.length; fi++) {
         vals[ins[fi].getAttribute('data-field')] = String(ins[fi].value || '').trim();
       }
+      // 把当前值写回 dialog —— 报错时 render() 会重建输入框，
+      // 不写回的话用户刚填的内容会被清空。
+      (d.fields || []).forEach(function (f) {
+        if (vals[f.key] !== undefined) f.value = vals[f.key];
+      });
       if (d.action === 'cloud-config') {
-        if (!vals.url) { view.dialogError = '文件地址不能为空'; render(); return; }
-        if (!/^https:\/\//i.test(vals.url)) { view.dialogError = '地址必须以 https:// 开头'; render(); return; }
         if (!vals.user) { view.dialogError = '账号不能为空'; render(); return; }
         if (!vals.pass) { view.dialogError = '应用密码不能为空'; render(); return; }
         var prevCfg = window.DailyCloud.readCfg();
         window.DailyCloud.writeCfg({
-          url: vals.url, user: vals.user, pass: vals.pass,
+          user: vals.user, pass: vals.pass,
           lastBackup: prevCfg.lastBackup || 0
         });
       }
@@ -2027,7 +2030,7 @@
     html += '<div class="group-title">云备份</div>';
     html += '<div class="card pad-0">';
     html += '<div class="row" data-act="cloud-config"><div class="row-ic ic-cloud"><div class="s-cloud-a"></div><div class="s-cloud-b"></div></div>';
-    html += '<div class="row-title">WebDAV 地址</div><div class="row-value">' +
+    html += '<div class="row-title">坚果云账号</div><div class="row-value">' +
             (cloudReady ? '已配置' : '未配置') + '</div><div class="chev">›</div></div>';
     if (cloudReady) {
       html += '<div class="row" data-act="cloud-backup"><div class="row-ic ic-up"><div class="s-tri-up"></div></div>';
@@ -2040,7 +2043,8 @@
     html += '</div>';
     html += '<div class="group-note">' +
             (window.DailyCloud
-              ? '数据整份存到你自己的 WebDAV，不经过任何第三方服务器。账号密码只存在这台设备上。'
+              ? '数据整份存到你自己的坚果云，不经过任何第三方服务器。账号密码只存在这台设备上。' +
+                (cloudReady ? '<br>存放位置：' + esc(window.DailyCloud.relPath(cloudCfg.user)) : '')
               : '云备份只在 App 版里可用 —— 网页预览版连不上 WebDAV（跨域）。') +
             '</div>';
 
@@ -2196,12 +2200,10 @@
     showDialog({
       kind: 'fields',
       title: '云备份设置',
-      text: '坚果云：账户信息 → 安全选项 → 添加应用，会生成一个「应用密码」。',
+      text: '坚果云 App → 设置 → 第三方应用管理 → 添加应用密码。地址会自动生成，不用填。',
       fields: [
-        { key: 'url', label: '文件地址', value: c.url || '',
-          placeholder: 'https://dav.jianguoyun.com/dav/daily-three.json' },
-        { key: 'user', label: '账号', value: c.user || '',
-          placeholder: '坚果云账号（邮箱）' },
+        { key: 'user', label: '坚果云账号', value: c.user || '',
+          placeholder: '邮箱' },
         { key: 'pass', label: '应用密码', value: c.pass || '',
           placeholder: '不是登录密码', password: true }
       ],
