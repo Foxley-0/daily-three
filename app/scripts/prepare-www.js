@@ -21,6 +21,7 @@ const ROOT = path.resolve(APP, '..')
 const SRC_HTML = path.join(ROOT, 'webapp', 'preview', 'index.html')
 const SRC_REMINDER = path.join(ROOT, 'miniprogram', 'utils', 'reminder.js')
 const SRC_NOTIFY = path.join(APP, 'src', 'notify.js')
+const SRC_CLOUD = path.join(APP, 'src', 'cloud.js')
 const WWW = path.join(APP, 'www')
 
 function mustExist(p, what) {
@@ -33,11 +34,11 @@ function mustExist(p, what) {
 mustExist(SRC_HTML, '网页版 index.html')
 mustExist(SRC_REMINDER, 'reminder.js')
 mustExist(SRC_NOTIFY, 'notify.js')
+mustExist(SRC_CLOUD, 'cloud.js')
 
-// 清空 www，避免残留旧文件
-if (fs.existsSync(WWW)) {
-  fs.rmSync(WWW, { recursive: true, force: true })
-}
+// 直接覆盖写，不删目录 —— 工作环境里有 safe-delete 钩子，递归删除会被拦。
+// www 里的文件名是固定的（index.html / lib/reminder.js / notify.js / cloud.js），
+// 不会有残留问题。
 fs.mkdirSync(path.join(WWW, 'lib'), { recursive: true })
 
 /* ---------- 1. index.html ---------- */
@@ -61,6 +62,7 @@ if (html.indexOf('</head>') >= 0) {
 // 引脚本
 const injectJs = `
 <script src="lib/reminder.js"></script>
+<script src="cloud.js"></script>
 <script src="notify.js"></script>
 `
 if (html.indexOf('</body>') >= 0) {
@@ -88,6 +90,7 @@ fs.writeFileSync(path.join(WWW, 'lib', 'reminder.js'), reminderBrowser)
 
 /* ---------- 3. notify.js ---------- */
 fs.copyFileSync(SRC_NOTIFY, path.join(WWW, 'notify.js'))
+fs.copyFileSync(SRC_CLOUD, path.join(WWW, 'cloud.js'))
 
 /* ---------- 报告 ---------- */
 const kb = (p) => (fs.statSync(p).size / 1024).toFixed(1) + ' KB'
@@ -95,3 +98,4 @@ console.log('✓ www 生成完毕')
 console.log('  index.html        ' + kb(path.join(WWW, 'index.html')))
 console.log('  lib/reminder.js   ' + kb(path.join(WWW, 'lib', 'reminder.js')))
 console.log('  notify.js         ' + kb(path.join(WWW, 'notify.js')))
+console.log('  cloud.js          ' + kb(path.join(WWW, 'cloud.js')))

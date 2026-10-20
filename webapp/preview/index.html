@@ -271,6 +271,44 @@
   }
   .dlg-input::placeholder { color: #c3c7cd; }
   .dlg-err { margin-top: 8px; text-align: center; font-size: 12px; color: #e64340; }
+
+  /* 多字段对话框（云备份配置用） */
+  .dlg-field { margin-top: 12px; }
+  .dlg-field-label { margin-bottom: 5px; font-size: 12px; color: #8a8f99; text-align: left; }
+  .dlg-field .dlg-input { margin-top: 0; text-align: left; font-size: 14px; }
+
+  /* 云备份 / 上传下载图标 */
+  .ic-cloud { background: #378add; }
+  .ic-up { background: #07c160; }
+  .ic-down { background: #f0a020; }
+  .s-cloud-a {
+    position: absolute; left: 50%; top: 50%; width: 12px; height: 8px;
+    margin: -3px 0 0 -6px; background: #fff; border-radius: 4px;
+  }
+  .s-cloud-b {
+    position: absolute; left: 50%; top: 50%; width: 7px; height: 7px;
+    margin: -7px 0 0 -6px; background: #fff; border-radius: 50%;
+  }
+  .s-tri-up {
+    position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+    margin: -8px 0 0 -5px;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-bottom: 7px solid #fff;
+  }
+  .s-tri-up::after {
+    content: ''; position: absolute; left: -1.5px; top: 9px;
+    width: 3px; height: 5px; background: #fff; border-radius: 1px;
+  }
+  .s-tri-down {
+    position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+    margin: 1px 0 0 -5px;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 7px solid #fff;
+  }
+  .s-tri-down::after {
+    content: ''; position: absolute; left: -1.5px; top: -14px;
+    width: 3px; height: 5px; background: #fff; border-radius: 1px;
+  }
   .dlg-btns { display: flex; gap: 10px; margin-top: 18px; }
   .dlg-btn {
     flex: 1; height: 42px; border-radius: 9px; display: flex; align-items: center;
@@ -1228,7 +1266,7 @@
   /* ---------- 视图 ---------- */
   var app = document.getElementById('app');
   var view = {
-    screen: 'today', stagger: false, enteringId: '', leavingId: '',
+    screen: 'today', stagger: false, enteringId: '', leavingId: '', cloudBusy: '',
     celebrating: false, numAnim: false, toggleIndex: null, prevDone: -1,
     form: { name: '', start: '', end: '' },
     formTouched: false,
@@ -1254,6 +1292,17 @@
       h += '<input class="dlg-input" id="dialog-input" maxlength="12" value="' + esc(d.value) +
            '" placeholder="' + esc(d.placeholder) + '">';
     }
+    if (d.kind === 'fields') {
+      (d.fields || []).forEach(function (f) {
+        h += '<div class="dlg-field">';
+        h += '<div class="dlg-field-label">' + esc(f.label) + '</div>';
+        h += '<input class="dlg-input" data-field="' + esc(f.key) + '" value="' + esc(f.value || '') +
+             '" placeholder="' + esc(f.placeholder || '') + '"' +
+             (f.password ? ' type="password"' : '') +
+             ' autocomplete="off" autocapitalize="off" spellcheck="false">';
+        h += '</div>';
+      });
+    }
     if (view.dialogError) h += '<div class="dlg-err">' + esc(view.dialogError) + '</div>';
     h += '<div class="dlg-btns">';
     if (d.kind !== 'alert') h += '<div class="dlg-btn" data-act="dialog-cancel">取消</div>';
@@ -1273,6 +1322,7 @@
       okText: opts.okText || '确定',
       danger: !!opts.danger,
       action: opts.action || '',
+      fields: opts.fields || null,
       payload: opts.payload === undefined ? null : opts.payload
     };
     view.dialogError = '';
@@ -1296,12 +1346,31 @@
       if (d.action === 'add-account') res = addAccount(val);
       else if (d.action === 'rename-account') res = renameAccount(d.payload, val);
       if (res && !res.ok) { view.dialogError = res.msg; render(); return; }
+    } else if (d.kind === 'fields') {
+      var vals = {};
+      var ins = document.querySelectorAll('[data-field]');
+      for (var fi = 0; fi < ins.length; fi++) {
+        vals[ins[fi].getAttribute('data-field')] = String(ins[fi].value || '').trim();
+      }
+      if (d.action === 'cloud-config') {
+        if (!vals.url) { view.dialogError = '文件地址不能为空'; render(); return; }
+        if (!/^https:\/\//i.test(vals.url)) { view.dialogError = '地址必须以 https:// 开头'; render(); return; }
+        if (!vals.user) { view.dialogError = '账号不能为空'; render(); return; }
+        if (!vals.pass) { view.dialogError = '应用密码不能为空'; render(); return; }
+        var prevCfg = window.DailyCloud.readCfg();
+        window.DailyCloud.writeCfg({
+          url: vals.url, user: vals.user, pass: vals.pass,
+          lastBackup: prevCfg.lastBackup || 0
+        });
+      }
     } else if (d.kind === 'confirm') {
       if (d.action === 'delete-account') {
         var r = removeAccount(d.payload);
         if (!r.ok) { alertBox(r.msg); return; }
       } else if (d.action === 'reset-all') {
         doResetAll();
+      } else if (d.action === 'cloud-restore-confirm') {
+        doCloudRestoreConfirmed();
       }
     }
 
@@ -1951,6 +2020,30 @@
     html += '<div class="group-note">只有 App 版会真的推送提醒，网页版只保存设置。' +
             (rm.enabled ? '现在每天 ' + (rm.time || '22:30') + ' 提醒你。' : '打开后每天到点提醒你打卡。') + '</div>';
 
+    /* 云备份 */
+    var cloudReady = !!(window.DailyCloud && window.DailyCloud.isConfigured && window.DailyCloud.isConfigured());
+    var cloudCfg = cloudReady ? window.DailyCloud.readCfg() : {};
+
+    html += '<div class="group-title">云备份</div>';
+    html += '<div class="card pad-0">';
+    html += '<div class="row" data-act="cloud-config"><div class="row-ic ic-cloud"><div class="s-cloud-a"></div><div class="s-cloud-b"></div></div>';
+    html += '<div class="row-title">WebDAV 地址</div><div class="row-value">' +
+            (cloudReady ? '已配置' : '未配置') + '</div><div class="chev">›</div></div>';
+    if (cloudReady) {
+      html += '<div class="row" data-act="cloud-backup"><div class="row-ic ic-up"><div class="s-tri-up"></div></div>';
+      html += '<div class="row-title">' + (view.cloudBusy === 'backup' ? '正在备份…' : '立即备份') + '</div>';
+      html += '<div class="row-value">' + (cloudCfg.lastBackup ? agoText(cloudCfg.lastBackup) : '还没备份过') + '</div><div class="chev">›</div></div>';
+      html += '<div class="row" data-act="cloud-restore"><div class="row-ic ic-down"><div class="s-tri-down"></div></div>';
+      html += '<div class="row-title">' + (view.cloudBusy === 'restore' ? '正在恢复…' : '从云端恢复') + '</div>';
+      html += '<div class="row-value">覆盖本地</div><div class="chev">›</div></div>';
+    }
+    html += '</div>';
+    html += '<div class="group-note">' +
+            (window.DailyCloud
+              ? '数据整份存到你自己的 WebDAV，不经过任何第三方服务器。账号密码只存在这台设备上。'
+              : '云备份只在 App 版里可用 —— 网页预览版连不上 WebDAV（跨域）。') +
+            '</div>';
+
     /* 内容 */
     html += '<div class="group-title">内容</div>';
     html += '<div class="card pad-0">';
@@ -2076,6 +2169,91 @@
       if (hc) hc.scrollTop = view.sheet.hour * 40;
       if (mc) mc.scrollTop = view.sheet.minute * 40;
     }, 30);
+  }
+
+  /** "3 分钟前" 这种人话时间 */
+  function agoText(ts) {
+    var gap = Date.now() - ts;
+    if (gap < 60000) return '刚刚';
+    if (gap < 3600000) return Math.floor(gap / 60000) + ' 分钟前';
+    if (gap < 86400000) return Math.floor(gap / 3600000) + ' 小时前';
+    var d = new Date(ts);
+    return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+  }
+
+  /* ---------- 云备份 ---------- */
+
+  function cloudReady() {
+    return !!(window.DailyCloud && window.DailyCloud.isConfigured && window.DailyCloud.isConfigured());
+  }
+
+  function openCloudConfig() {
+    if (!window.DailyCloud) {
+      alertBox('云备份只在 App 版里能用。网页预览版连不上 WebDAV（跨域会被拦）。', '云备份');
+      return;
+    }
+    var c = window.DailyCloud.readCfg();
+    showDialog({
+      kind: 'fields',
+      title: '云备份设置',
+      text: '坚果云：账户信息 → 安全选项 → 添加应用，会生成一个「应用密码」。',
+      fields: [
+        { key: 'url', label: '文件地址', value: c.url || '',
+          placeholder: 'https://dav.jianguoyun.com/dav/daily-three.json' },
+        { key: 'user', label: '账号', value: c.user || '',
+          placeholder: '坚果云账号（邮箱）' },
+        { key: 'pass', label: '应用密码', value: c.pass || '',
+          placeholder: '不是登录密码', password: true }
+      ],
+      okText: '保存',
+      action: 'cloud-config'
+    });
+  }
+
+  function doCloudBackup() {
+    if (!cloudReady() || view.cloudBusy) return;
+    var raw = readRaw();
+    if (!raw) { alertBox('本地还没有数据'); return; }
+    view.cloudBusy = 'backup';
+    render();
+    window.DailyCloud.backup(raw).then(function (r) {
+      view.cloudBusy = '';
+      render();
+      alertBox('已备份到云端（' + (r.bytes / 1024).toFixed(0) + ' KB）', '备份成功');
+    }).catch(function (e) {
+      view.cloudBusy = '';
+      render();
+      alertBox(e.message || '备份失败', '备份失败');
+    });
+  }
+
+  function doCloudRestore() {
+    if (!cloudReady() || view.cloudBusy) return;
+    showDialog({
+      kind: 'confirm',
+      title: '从云端恢复',
+      text: '会用云端那份覆盖这台设备上的全部数据，包括所有账号。本地的改动会丢失。',
+      okText: '覆盖本地',
+      danger: true,
+      action: 'cloud-restore-confirm'
+    });
+  }
+
+  function doCloudRestoreConfirmed() {
+    view.cloudBusy = 'restore';
+    render();
+    window.DailyCloud.restore().then(function (data) {
+      var c = buildContainer(data);
+      if (!c) throw new Error('云端数据里没有账号');
+      writeContainer(c);
+      view.cloudBusy = '';
+      render();
+      alertBox('已从云端恢复', '恢复成功');
+    }).catch(function (e) {
+      view.cloudBusy = '';
+      render();
+      alertBox(e.message || '恢复失败', '恢复失败');
+    });
   }
 
   function applyOption(kind, raw) {
@@ -2219,6 +2397,12 @@
       applyOption(view.sheet ? view.sheet.kind : '', el.dataset.value);
       view.sheet = null;
       render();
+    } else if (act === 'cloud-config') {
+      openCloudConfig();
+    } else if (act === 'cloud-backup') {
+      doCloudBackup();
+    } else if (act === 'cloud-restore') {
+      doCloudRestore();
     } else if (act === 'open-time') {
       openTimePicker();
     } else if (act === 'time-ok') {
