@@ -177,13 +177,6 @@
   .switch.on { background: #07c160; }
   .switch.on::after { transform: translateX(20px); }
 
-  /* 透明的原生时间选择器，盖住整行，点哪都能唤出系统的时间选择 */
-  .time-input {
-    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-    opacity: 0; border: 0; padding: 0; margin: 0;
-    -webkit-appearance: none; appearance: none;
-  }
-
   /* ---------- 底部弹出选择器（替掉浏览器原生 select） ---------- */
   .sheet-mask {
     position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 900;
@@ -213,6 +206,46 @@
     margin-top: -5px; border-left: 2px solid #07c160; border-bottom: 2px solid #07c160;
     transform: rotate(-45deg);
   }
+
+  /* ---------- 时间滚轮（时 / 分 双列） ---------- */
+  .tp-wrap {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    height: 200px; padding: 0 16px;
+  }
+  .tp-band {
+    position: absolute; left: 50%; top: 50%;
+    width: 176px; height: 40px; margin: -20px 0 0 -88px;
+    background: #f1f8f4; border-radius: 10px;
+  }
+  .tp-col {
+    position: relative; z-index: 1;
+    width: 76px; height: 200px;
+    padding: 80px 0;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 32%, #000 68%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 32%, #000 68%, transparent 100%);
+  }
+  .tp-col::-webkit-scrollbar { display: none; }
+  .tp-item {
+    height: 40px; line-height: 40px; text-align: center;
+    font-size: 21px; color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
+    scroll-snap-align: center;
+  }
+  .tp-colon {
+    position: relative; z-index: 1;
+    width: 18px; text-align: center; font-size: 21px; color: #1a1a1a;
+  }
+  .tp-ok {
+    margin: 4px 16px 6px; padding: 13px; text-align: center;
+    font-size: 16px; font-weight: 600; color: #fff;
+    background: #07c160; border-radius: 12px; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .tp-ok:hover { opacity: .85; }
 
   /* ---------- 页面内对话框 ----------
      替掉原生 alert / prompt / confirm —— 预览面板是沙箱 iframe，
@@ -1908,9 +1941,8 @@
     html += '<div class="row" data-act="toggle-reminder"><div class="row-ic ic-bell"><div class="s-bell"></div><div class="s-bell-base"></div><div class="s-bell-dot"></div></div>';
     html += '<div class="row-title">每日提醒</div><div class="switch' + (rm.enabled ? ' on' : '') + '"></div></div>';
 
-    html += '<div class="row"><div class="row-ic ic-clock"><div class="s-ring"></div><div class="s-hand-v"></div><div class="s-hand-h"></div></div>';
-    html += '<div class="row-title">提醒时间</div><div class="row-value">' + (rm.time || '22:30') + '</div><div class="chev">›</div>';
-    html += '<input class="time-input" type="time" value="' + (rm.time || '22:30') + '" aria-label="提醒时间"></div>';
+    html += '<div class="row" data-act="open-time"><div class="row-ic ic-clock"><div class="s-ring"></div><div class="s-hand-v"></div><div class="s-hand-h"></div></div>';
+    html += '<div class="row-title">提醒时间</div><div class="row-value">' + (rm.time || '22:30') + '</div><div class="chev">›</div></div>';
 
     html += '<div class="row" data-act="open-sheet" data-kind="rtarget"><div class="row-ic ic-list"><div class="s-line s-l1"></div><div class="s-line s-l2"></div><div class="s-line s-l3"></div></div>';
     html += '<div class="row-title">提醒哪一件</div><div class="row-value">' + rmTargetLabel + '</div><div class="chev">›</div></div>';
@@ -1943,15 +1975,34 @@
     var overlay = '';
     if (view.sheet) {
       overlay += '<div class="sheet-mask" data-act="close-sheet"><div class="sheet">';
-      overlay += '<div class="sheet-title">' + view.sheet.title + '</div>';
-      overlay += '<div class="sheet-list">';
-      view.sheet.options.forEach(function (o) {
-        var on = o.value === view.sheet.selected;
-        overlay += '<div class="sheet-item' + (on ? ' on' : '') + '" data-act="pick-opt" data-value="' + o.value + '">' + o.label;
-        if (on) overlay += '<span class="sheet-check"></span>';
+
+      if (view.sheet.kind === 'time') {
+        /* 时 / 分 双列滚轮 */
+        var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+        var h, m;
+        overlay += '<div class="sheet-title">提醒时间</div>';
+        overlay += '<div class="tp-wrap"><div class="tp-band"></div>';
+        overlay += '<div class="tp-col" id="tp-h">';
+        for (h = 0; h < 24; h++) overlay += '<div class="tp-item">' + p2(h) + '</div>';
         overlay += '</div>';
-      });
-      overlay += '</div></div></div>';
+        overlay += '<div class="tp-colon">:</div>';
+        overlay += '<div class="tp-col" id="tp-m">';
+        for (m = 0; m < 60; m++) overlay += '<div class="tp-item">' + p2(m) + '</div>';
+        overlay += '</div></div>';
+        overlay += '<div class="tp-ok" data-act="time-ok">完成</div>';
+      } else {
+        overlay += '<div class="sheet-title">' + view.sheet.title + '</div>';
+        overlay += '<div class="sheet-list">';
+        view.sheet.options.forEach(function (o) {
+          var on = o.value === view.sheet.selected;
+          overlay += '<div class="sheet-item' + (on ? ' on' : '') + '" data-act="pick-opt" data-value="' + o.value + '">' + o.label;
+          if (on) overlay += '<span class="sheet-check"></span>';
+          overlay += '</div>';
+        });
+        overlay += '</div>';
+      }
+
+      overlay += '</div></div>';
     }
 
     renderInto(html, overlay);
@@ -2006,6 +2057,27 @@
     }
   }
 
+  /** 打开时间滚轮 */
+  function openTimePicker() {
+    var d = load();
+    var t = String((d.reminder && d.reminder.time) || '22:30').split(':');
+    var hh = Number(t[0]), mi = Number(t[1]);
+    view.sheet = {
+      kind: 'time',
+      hour: isFinite(hh) ? Math.max(0, Math.min(23, hh)) : 22,
+      minute: isFinite(mi) ? Math.max(0, Math.min(59, mi)) : 30
+    };
+    render();
+    // 等 DOM 出来再滚到当前值
+    setTimeout(function () {
+      if (!view.sheet || view.sheet.kind !== 'time') return;
+      var hc = document.getElementById('tp-h');
+      var mc = document.getElementById('tp-m');
+      if (hc) hc.scrollTop = view.sheet.hour * 40;
+      if (mc) mc.scrollTop = view.sheet.minute * 40;
+    }, 30);
+  }
+
   function applyOption(kind, raw) {
     var d = load();
     var value = Number(raw);
@@ -2026,20 +2098,16 @@
   /* ---------- 事件 ---------- */
   // 监听整个文档：浮层（对话框 / 底部面板 / 起名弹窗）现在挂在 #overlay 下，
   // 不在 #app 里 —— 只监听 #app 会收不到它们的点击。
-  // 原生时间选择器：选完就存
-  document.addEventListener('change', function (e) {
-    if (!e.target || !e.target.classList || !e.target.classList.contains('time-input')) return;
-    var v = e.target.value;
-    if (!/^\d{1,2}:\d{1,2}$/.test(v)) return;
-    var parts = v.split(':');
-    var hh = Number(parts[0]), mi = Number(parts[1]);
-    if (!(hh >= 0 && hh <= 23 && mi >= 0 && mi <= 59)) return;
-    var dT = load();
-    dT.reminder.time = (hh < 10 ? '0' : '') + hh + ':' + (mi < 10 ? '0' : '') + mi;
-    save(dT);
-    refreshNotification();
-    render();
-  });
+  // 时间滚轮：滚动时只记位置，不重渲染（重渲染会打断滚动）
+  // scroll 事件不冒泡，所以用捕获阶段监听
+  document.addEventListener('scroll', function (e) {
+    var el = e.target;
+    if (!el || !el.id || (el.id !== 'tp-h' && el.id !== 'tp-m')) return;
+    if (!view.sheet || view.sheet.kind !== 'time') return;
+    var idx = Math.round(el.scrollTop / 40);
+    if (el.id === 'tp-h') view.sheet.hour = Math.max(0, Math.min(23, idx));
+    else view.sheet.minute = Math.max(0, Math.min(59, idx));
+  }, true);
 
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-act]');
@@ -2150,6 +2218,16 @@
       // 传原始字符串：提醒时间要 "22:30" 这种，不能强转成数字
       applyOption(view.sheet ? view.sheet.kind : '', el.dataset.value);
       view.sheet = null;
+      render();
+    } else if (act === 'open-time') {
+      openTimePicker();
+    } else if (act === 'time-ok') {
+      var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+      var dT = load();
+      dT.reminder.time = p2(view.sheet.hour) + ':' + p2(view.sheet.minute);
+      save(dT);
+      view.sheet = null;
+      refreshNotification();
       render();
     } else if (act === 'toggle-reminder') {
       var dR = load();
