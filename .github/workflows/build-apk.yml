@@ -14,6 +14,10 @@ on:
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
+# 发布 Release 需要写权限
+permissions:
+  contents: write
+
 jobs:
   build:
     # 锁死 24.04：ubuntu-latest 从 2026-10-19 开始迁到 Ubuntu 26，
@@ -73,10 +77,32 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: 上传 APK
+      - name: 改个能直接装的名字
+        working-directory: app/android/app/build/outputs/apk/debug
+        run: |
+          ls -la
+          cp app-debug.apk daily-three.apk
+
+      # Actions 的产物（artifact）即使公开仓库也要登录才能下，
+      # 而 Release 的资源是公开直链，curl 就能拉，也不会 90 天过期。
+      - name: 发布到 Release（公开可下载）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: 最新构建
+          body: |
+            自动构建，来自提交 `${{ github.sha }}`
+            分支：`${{ github.ref_name }}`
+
+            安装：下载 `daily-three.apk`，传到手机，允许「未知来源」即可。
+          files: app/android/app/build/outputs/apk/debug/daily-three.apk
+          prerelease: true
+          make_latest: false
+
+      - name: 上传 APK（构建产物，需要登录下载）
         uses: actions/upload-artifact@v4
         with:
           name: daily-three-apk
-          path: app/android/app/build/outputs/apk/debug/*.apk
+          path: app/android/app/build/outputs/apk/debug/daily-three.apk
           if-no-files-found: error
           retention-days: 90
