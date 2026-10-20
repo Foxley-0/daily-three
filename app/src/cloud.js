@@ -6,9 +6,14 @@
  *   - 恢复：整份 GET 下来，覆盖本地
  *   - 冲突：不存在（同一时刻只有一个在线设备在写）
  *
- * 地址不用用户填：服务器固定坚果云，目录按账号算出来。
+ * 地址不用用户填：服务器固定坚果云，路径按账号算出来。
  *   https://dav.jianguoyun.com/dav/daily-three/<账号hash>/backup.json
  * 同一账号在任何设备算出同一个 hash，所以换设备也不用填、不会重名。
+ *
+ * 为什么必须放在目录里（2026-10-20 实测坚果云）：
+ *   MKCOL /dav/<目录>/                  → 201 ✓
+ *   PUT   /dav/<目录>/backup.json       → 201 ✓
+ *   PUT   /dav/<文件名>.json（根目录）  → 404 ✗ 坚果云不允许在根目录直接建文件
  */
 (function () {
   var CFG_KEY = 'daily_three_cloud';
@@ -53,6 +58,8 @@
     } catch (e) {}
   }
 
+  /* ---------- 路径 ---------- */
+
   /**
    * 服务器根地址。默认坚果云；localStorage 里设了 daily_three_cloud_base 就用它。
    * 平时不暴露到界面 —— 用户不需要填地址。
@@ -65,8 +72,6 @@
     return BASE;
   }
 
-  /* ---------- 路径：账号 → 目录 ---------- */
-
   /** FNV-1a，32 位 */
   function fnv(str) {
     var h = 2166136261;
@@ -77,24 +82,15 @@
     return h >>> 0;
   }
 
-  /** 账号 → 8 位小写字母数字，当目录名 */
+  /** 账号 → 8 位小写字母数字 */
   function dirOf(user) {
     var u = String(user || '').trim().toLowerCase();
     return (fnv(u).toString(36) + fnv(u + '#daily-three').toString(36)).slice(0, 8);
   }
 
-  function dirUrl(user) {
-    return baseUrl() + '/' + TOP + '/' + dirOf(user);
-  }
-
-  function fileUrl(user) {
-    return dirUrl(user) + '/backup.json';
-  }
-
-  /** 给界面显示的相对路径 */
-  function relPath(user) {
-    return TOP + '/' + dirOf(user) + '/backup.json';
-  }
+  function dirUrl(user) { return baseUrl() + '/' + TOP + '/' + dirOf(user); }
+  function fileUrl(user) { return dirUrl(user) + '/backup.json'; }
+  function relPath(user) { return TOP + '/' + dirOf(user) + '/backup.json'; }
 
   /* ---------- 请求 ---------- */
 
@@ -120,33 +116,43 @@
     }
     return fetch(url, opts).then(function (res) {
       return res.text().then(function (txt) {
-        return { status: res.status, ok: res.ok, text: txt };
+        return { status: res.status, ok: res.ok, text: txt, url: url };
       });
     });
   }
 
-  /**
-   * 建目录。WebDAV 的 MKCOL：
-   *   201 建好了 / 405 已经存在 —— 都算成功
-   *   409 父目录不存在 —— 先建父目录
-   *   401 密码错
-   */
+  function mkErr(msg, status, url) {
+    var e = new Error(msg + (url ? '（' + url + '）' : ''));
+    e.status = status;
+    return e;
+  }
+
+  /** 建目录。201 建好 / 405 已存在 —— 都算成功 */
   function mkcol(url, cfg) {
     return request('MKCOL', url, cfg).then(function (r) {
-      if (r.status === 201 || r.status === 405 || r.status === 200) return true;
-      if (r.status === 401 || r.status === 403) throw new Error('账号或应用密码不对（HTTP ' + r.status + '）');
-      if (r.status === 409) throw new Error('父目录不存在，可能账号还没初始化（HTTP 409）');
-      throw new Error('建目录失败 HTTP ' + r.status);
+      if (r.status === 201 || r.status === 200 || r.status === 405) return true;
+      if (r.status === 401 || r.status === 403) {
+        throw mkErr('账号或应用密码不对（HTTP ' + r.status + '）', r.status);
+      }
+      throw mkErr('建目录失败 HTTP ' + r.status, r.status, url);
     });
   }
 
   function ensureDirs(cfg) {
     var top = baseUrl() + '/' + TOP;
-    var sub = dirUrl(cfg.user);
     return mkcol(top, cfg).then(function () {
-      return mkcol(sub, cfg);
-    }).then(function () {
-      return sub;
+      return mkcol(dirUrl(cfg.user), cfg);
+    });
+  }
+
+  function put(url, cfg, body) {
+    return request('PUT', url, cfg, body).then(function (r) {
+      if (r.status === 200 || r.status === 201 || r.status === 204) return r;
+      if (r.status === 401 || r.status === 403) {
+        throw mkErr('账号或应用密码不对（HTTP ' + r.status + '）', r.status);
+      }
+      if (r.status === 507) throw mkErr('坚果云空间不够了（HTTP 507）', r.status);
+      throw mkErr('上传失败 HTTP ' + r.status, r.status, url);
     });
   }
 
@@ -155,22 +161,16 @@
   function backup(payload) {
     var cfg = readCfg();
     if (!cfg.user) return Promise.reject(new Error('还没填账号'));
-
     var body = JSON.stringify(payload);
-    return ensureDirs(cfg).then(function () {
-      return request('PUT', fileUrl(cfg.user), cfg, body);
-    }).then(function (r) {
-      if (r.status === 200 || r.status === 201 || r.status === 204) {
+
+    return ensureDirs(cfg)
+      .then(function () {
+        return put(fileUrl(cfg.user), cfg, body);
+      })
+      .then(function () {
         markBackedUp(Date.now());
         return { bytes: body.length, path: relPath(cfg.user) };
-      }
-      if (r.status === 401 || r.status === 403) {
-        throw new Error('账号或应用密码不对（HTTP ' + r.status + '）');
-      }
-      if (r.status === 404) throw new Error('目录不存在，坚果云可能不支持自动建目录（HTTP 404）');
-      if (r.status === 507) throw new Error('坚果云空间不够了（HTTP 507）');
-      throw new Error('上传失败 HTTP ' + r.status);
-    });
+      });
   }
 
   function restore() {

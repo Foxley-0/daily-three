@@ -263,7 +263,7 @@
     animation: cardPop .3s cubic-bezier(.34,1.4,.64,1) both;
   }
   .dlg-title { text-align: center; font-size: 16px; font-weight: 600; }
-  .dlg-text { margin-top: 10px; text-align: center; font-size: 13px; line-height: 1.6; color: #8a8f99; }
+  .dlg-text { margin-top: 10px; text-align: center; font-size: 13px; line-height: 1.6; color: #8a8f99; white-space: pre-line; }
   .dlg-input {
     margin-top: 16px; width: 100%; height: 42px; padding: 0 12px; box-sizing: border-box;
     background: #f5f6f8; border: 0; outline: none; border-radius: 9px;
@@ -2221,7 +2221,9 @@
     window.DailyCloud.backup(raw).then(function (r) {
       view.cloudBusy = '';
       render();
-      alertBox('已备份到云端（' + (r.bytes / 1024).toFixed(0) + ' KB）', '备份成功');
+      var msg = '已备份到云端（' + (r.bytes / 1024).toFixed(0) + ' KB）';
+      if (r.path) msg += '\n\n存放位置：' + r.path;
+      alertBox(msg, '备份成功');
     }).catch(function (e) {
       view.cloudBusy = '';
       render();
