@@ -1135,6 +1135,13 @@
     if (!found) c.accounts.push(account);
     c.activeId = account.id;
     writeContainer(c);
+    scheduleCloudPush();
+  }
+
+  /** 本地数据变了 → 通知云备份（1.5 秒防抖，连续改只推一次） */
+  function scheduleCloudPush() {
+    if (!window.DailyCloud || typeof window.DailyCloud.scheduleBackup !== 'function') return;
+    window.DailyCloud.scheduleBackup(function () { return readRaw(); });
   }
 
   function listAccounts() {
@@ -1292,6 +1299,7 @@
   var app = document.getElementById('app');
   var view = {
     screen: 'today', stagger: false, enteringId: '', leavingId: '', cloudBusy: '',
+    cloudOffline: false, cloudError: '',
     celebrating: false, numAnim: false, toggleIndex: null, prevDone: -1,
     form: { name: '', start: '', end: '' },
     formTouched: false,
@@ -1414,8 +1422,34 @@
    * 浮层（对话框 / 底部面板 / 起名弹窗）写到 #overlay，**不放 .screen 里** ——
    * .screen 挂着 transform 动画，会让里面的 position:fixed 相对它定位，滚动后跑偏。
    */
+  /* ---------- 云备份事件 ----------
+     cloud.js 拉到云端数据 → 覆盖本地并重绘
+     cloud.js 状态变化（离线）→ 顶部提示条 + 禁用编辑入口 */
+  window.addEventListener('cloud:data', function (e) {
+    var c = buildContainer(e.detail);
+    if (!c) return;
+    writeContainer(c);
+    render();
+  });
+
+  window.addEventListener('cloud:state', function (e) {
+    var online = !!(e.detail && e.detail.online);
+    view.cloudOffline = !online;
+    view.cloudError = (e.detail && e.detail.error) || '';
+    document.body.classList.toggle('readonly', !online);
+    render();
+  });
+
   function renderInto(html, overlayHtml) {
-    app.innerHTML = '<div class="screen dir-' + navDir + '">' + html + '</div>';
+    // 离线时顶部挂一条只读提示
+    var bar = '';
+    if (view.cloudOffline) {
+      bar = '<div class="offline-bar"><div class="offline-dot"></div><div>' +
+            '当前离线，只能查看。打卡需要联网。' +
+            (view.cloudError ? '<span class="offline-sub">' + esc(view.cloudError) + '</span>' : '') +
+            '</div></div>';
+    }
+    app.innerHTML = '<div class="screen dir-' + navDir + '">' + bar + html + '</div>';
     navDir = 'none';
 
     var ov = document.getElementById('overlay');
