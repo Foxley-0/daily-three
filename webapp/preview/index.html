@@ -2447,8 +2447,11 @@
     } else if (act === 'dialog-ok') {
       doDialogOk();
     } else if (act === 'dialog-cancel') {
-      // 点对话框内部不关
-      if (e.target.closest('.dlg')) return;
+      // 点遮罩关、点「取消」按钮也关；点对话框里的空白处不关。
+      // 注意：取消按钮本身就在 .dlg 里，只判断 closest('.dlg') 会把按钮也挡掉。
+      var inCard = e.target.closest('.dlg');
+      var onBtn = e.target.closest('.dlg-btn');
+      if (inCard && !onBtn) return;
       view.dialog = null;
       view.dialogError = '';
       render();
