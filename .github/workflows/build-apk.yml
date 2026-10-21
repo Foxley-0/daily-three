@@ -73,13 +73,21 @@ jobs:
 
       # 用固定的 keystore 签名，这样每次编译出来的 APK 签名一致，
       # 手机上覆盖安装才不会报"签名不一致"。
+      # 容错：Secret 没配 / base64 贴坏 / 解出来不是合法 PKCS12 时，
+      # 自动删掉 keystore 退回默认 debug 签名，保证编译不会因此失败。
       - name: 还原签名 keystore
         if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > app/android/app/release.keystore
-          ls -la app/android/app/release.keystore
+          set -e
+          echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > app/android/app/release.keystore 2>/dev/null || true
+          SIZE=$(stat -c%s app/android/app/release.keystore 2>/dev/null || echo 0)
+          echo "keystore 大小: $SIZE 字节"
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "::warning::keystore 解出来只有 $SIZE 字节，不是合法文件，这次用默认签名"
+            rm -f app/android/app/release.keystore
+          fi
 
       - name: 编译 APK
         working-directory: app/android
