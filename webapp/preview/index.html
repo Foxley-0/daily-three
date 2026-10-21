@@ -1231,7 +1231,19 @@
     refreshUnlocked(data);
     return data;
   }
-  function init() { var d = rollover(load()); save(d); return d; }
+  function init() {
+    var before = load();
+    var beforeDay = before.today;
+    var d = rollover(before);
+    save(d);
+    // 跨天了 → 把归档后的完整状态复制一份"昨日副本"。
+    // 副本的时间戳挂在结算时间上（逻辑日期 + dayStartHour），
+    // 代表"上一个统计周期的完整状态"，不是写入时刻。
+    if (d.today !== beforeDay && window.DailyCloud && typeof window.DailyCloud.copyNow === 'function') {
+      window.DailyCloud.copyNow(readRaw(), beforeDay, d.dayStartHour);
+    }
+    return d;
+  }
 
   /* ---------- 设置 ---------- */
   function clampInt(value, min, max, fallback) {
@@ -1625,7 +1637,11 @@
   }
 
   function submitName() {
-    var name = String(view.nameInput || '').trim();
+    // ⚠️ 不能只读 view.nameInput —— 安卓输入法（尤其中文）下 input 事件不一定触发，
+    // 内存里还是空串，点「开始」就一直报"先起个名字吧"。
+    // 直接读输入框的当前值最稳。
+    var el = document.getElementById('name-input');
+    var name = String((el ? el.value : '') || view.nameInput || '').trim();
     if (!name) { alertBox('先起个名字吧'); return; }
     var d = load();
     setProfileName(d, name);
@@ -2356,7 +2372,18 @@
       writeContainer(c);
       view.cloudBusy = '';
       render();
-      alertBox('已从云端恢复', '恢复成功');
+      var msg = '已从云端恢复';
+      if (res.fromCopy) {
+        var when = '';
+        if (res.day) {
+          var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+          when = res.day + ' ' + p2(res.cutoffHour || 0) + ':00';
+        }
+        msg = '主存档读不出来，已用「昨日副本」恢复。\n\n' +
+              (when ? '副本截止：' + when + '（你的结算时间）\n\n' : '') +
+              '今天的任务需要重新填，历史记录都在。';
+      }
+      alertBox(msg, res.fromCopy ? '已从副本恢复' : '恢复成功');
     }).catch(function (e) {
       view.cloudBusy = '';
       render();

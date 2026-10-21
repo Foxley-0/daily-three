@@ -16,6 +16,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // 固定签名：CI 里用 GitHub Secrets 还原的 keystore。
+    // 本地没有 release.keystore 或没设环境变量时，自动退回默认 debug 签名。
+    def ksPath = file("release.keystore")
+    def ksPass = System.getenv("KEYSTORE_PASS")
+    def ksAlias = System.getenv("KEY_ALIAS") ?: "daily-three"
+    if (ksPath.exists() && ksPass) {
+        signingConfigs {
+            debug {
+                storeFile ksPath
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword ksPass
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false

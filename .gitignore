@@ -29,3 +29,7 @@ umdlogs/
 app/www/
 app/node_modules/
 app/npm-install.log
+
+# 签名文件，绝对不要提交
+.signing/
+app/android/app/release.keystore
