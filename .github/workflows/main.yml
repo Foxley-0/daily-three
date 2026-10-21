@@ -1,0 +1,12 @@
+name: 临时生成证书
+
+on: workflow_dispatch
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Key
+        run: |
+          keytool -genkeypair -v -keystore release.jks -alias mykey -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=superfox66, OU=Dev, O=DailyThree, L=City, ST=State, C=CN"
+          base64 -w 0 release.jks
