@@ -34,7 +34,7 @@
   var HOME = '我的坚果云';
   var MAIN = 'daily-three.json';
   var COPY = 'daily-three-backup.json';
-  var RETRY_MS = 5000;
+  var RETRY_MS = 5000;   // 推送失败后重试间隔
   var DEBOUNCE_MS = 1500;
 
   /* ---------- 配置 ---------- */
