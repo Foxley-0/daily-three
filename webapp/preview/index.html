@@ -784,7 +784,6 @@
 (function () {
   var KEY = 'daily_three_v1';
   var OFFSET_KEY = 'daily_three_clock_offset';
-  var MIN_TASKS = 3;
   var MAX_GAP_DAYS = 30;
   var CARDS_PER = 7;
   var MAKEUP_WINDOW = 3;
@@ -1075,7 +1074,9 @@
     if (typeof out.minTasks !== 'number' || out.minTasks < 1) out.minTasks = DEFAULTS.minTasks;
     if (typeof out.maxCards !== 'number' || out.maxCards < 1) out.maxCards = DEFAULTS.maxCards;
     if (!Array.isArray(out.tasks)) out.tasks = base.tasks;
-    out.tasks = padToMin(out.tasks, out.minTasks);
+    // ⚠️ 这里只在 tasks 缺失/为空时补位。
+    // 无条件 padToMin 会在每次 load() 时把用户删掉的任务补回来 —— 表现就是"删不掉"。
+    if (!out.tasks || !out.tasks.length) out.tasks = padToMin([], out.minTasks);
     if (typeof out.makeupCards !== 'number') out.makeupCards = 0;
 
     // 提醒设置（App 版才有实际作用；网页版只是存着）
@@ -1227,7 +1228,9 @@
       data.today = today;
       data.tasks = padToMin([], data.minTasks);
     }
-    data.tasks = padToMin(data.tasks, data.minTasks);
+    // ⚠️ 这里不能无条件 padToMin —— 那样用户删掉的任务每次渲染都会被补回来，
+    // 表现就是"删不掉"。只在列表为空时兜底。
+    if (!data.tasks || !data.tasks.length) data.tasks = padToMin([], data.minTasks);
     refreshUnlocked(data);
     return data;
   }
@@ -1505,7 +1508,9 @@
     var total = filled.length;
     var done = filled.filter(function (t) { return t.done; }).length;
     var percent = total ? Math.round(done / total * 100) : 0;
-    var canDelete = data.tasks.length > MIN_TASKS;
+    // 只剩 1 条时不给删，否则就没有输入框了。
+    // 注意：跟「最少任务位」无关 —— 那个只决定每天开始时给几个空位。
+    var canDelete = data.tasks.length > 1;
     var info = todayInfo(data);
 
     var allDone = total > 0 && done === total;
@@ -1576,7 +1581,11 @@
         html += '<input class="task-input" data-i="' + i + '" value="' + esc(t.text) + '" maxlength="40" placeholder="写一件今天要做的事">';
       }
       // 已完成的任务不给删除按钮 —— 想删先取消勾选
-      if (canDelete && !t.done) html += '<div class="del" data-act="del" data-i="' + i + '">×</div>';
+      // × 只看「未完成」+「列表还剩不止一条」。
+      // 不判断有没有文字 —— 打字只更新进度条不重绘行，判断文字会让 × 状态飘。
+      if (canDelete && !t.done) {
+        html += '<div class="del" data-act="del" data-i="' + i + '">×</div>';
+      }
       html += '</div>';
     });
     html += '</div>';
@@ -1664,7 +1673,7 @@
       alertBox('已完成的任务不能删除。想删的话先取消勾选。', '不能删除');
       return;
     }
-    if (d.tasks.length <= MIN_TASKS) return;
+    if (d.tasks.length <= 1) return;
 
     view.leavingId = id;
     renderToday();
@@ -1673,7 +1682,7 @@
       var at2 = -1;
       d2.tasks.forEach(function (t, idx) { if (t.id === id) at2 = idx; });
       if (at2 >= 0) d2.tasks.splice(at2, 1);
-      d2.tasks = padToMin(d2.tasks);
+      // 删了就是删了，不补空位 —— 想加回来点「添加任务」
       save(d2);
       view.leavingId = '';
       renderToday();
@@ -2451,15 +2460,16 @@
         }
       }, 520);
     } else if (act === 'del') {
-      if (data.tasks.length <= MIN_TASKS) return;
+      if (data.tasks.length <= 1) return;
       var delTask = data.tasks[i];
       if (!delTask || delTask.done) return;
       var delText = String(delTask.text || '').trim();
-      if (!delText) return;
       showDialog({
         kind: 'confirm',
         title: '删除任务',
-        text: '确定删除「' + delText + '」吗？删掉后今天就少这一条记录了。',
+        text: delText
+          ? '确定删除「' + delText + '」吗？删掉后今天就少这一条记录了。'
+          : '确定删掉这个空位吗？',
         okText: '删除',
         danger: true,
         action: 'delete-task',
