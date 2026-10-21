@@ -95,6 +95,7 @@
   }
 
   var LOG = 'backup-log.txt';
+  var KEEP = 30;   // 云端最多留 30 个快照，更旧的自动删掉
 
   function relDir() { return HOME; }
 
@@ -107,17 +108,22 @@
            '  ' + file;
   }
 
+  /** 从日志里取所有文件名（去重，保持出现顺序） */
+  function filesInLog(logText) {
+    var out = [];
+    var lines = String(logText || '').split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var parts = lines[i].trim().split(/\s+/);
+      var name = parts[parts.length - 1];
+      if (/^backup-\d{8}-\d{6}\.json$/.test(name) && out.indexOf(name) < 0) out.push(name);
+    }
+    return out;
+  }
+
   /** 从日志里取最后一个文件名 */
   function lastFileOf(logText) {
-    var lines = String(logText || '').split(/\r?\n/);
-    for (var i = lines.length - 1; i >= 0; i--) {
-      var ln = lines[i].trim();
-      if (!ln) continue;
-      var parts = ln.split(/\s+/);
-      var name = parts[parts.length - 1];
-      if (/^backup-\d{8}-\d{6}\.json$/.test(name)) return name;
-    }
-    return '';
+    var all = filesInLog(logText);
+    return all.length ? all[all.length - 1] : '';
   }
 
   /* ---------- 请求 ---------- */
@@ -181,6 +187,7 @@
     var name = dataName();
     var body = JSON.stringify(payload);
     var at = Date.now();
+    var logText = '';
 
     return request('PUT', dirUrl() + '/' + name, cfg, body).then(function (r) {
       if (!(r.status === 200 || r.status === 201 || r.status === 204)) {
@@ -197,7 +204,8 @@
       lines.push(logLine(name, at));
       if (lines.length > 200) lines = lines.slice(lines.length - 200);
 
-      return request('PUT', dirUrl() + '/' + LOG, cfg, lines.join('\n') + '\n');
+      logText = lines.join('\n') + '\n';
+      return request('PUT', dirUrl() + '/' + LOG, cfg, logText);
     }).then(function (r) {
       if (!(r.status === 200 || r.status === 201 || r.status === 204)) {
         throw httpErr('写日志失败', r.status);
@@ -205,7 +213,15 @@
       cfg.lastBackup = at;
       cfg.lastFile = name;
       writeCfg(cfg);
-      return { bytes: body.length, file: name, path: relDir() + '/' + name };
+
+      // 顺手清掉太旧的快照（只留最近 KEEP 个）。删失败不影响备份结果。
+      var all = filesInLog(logText);
+      var extra = all.slice(0, Math.max(0, all.length - KEEP));
+      extra.forEach(function (n) {
+        request('DELETE', dirUrl() + '/' + n, cfg).catch(function () {});
+      });
+
+      return { bytes: body.length, file: name, path: relDir() + '/' + name, pruned: extra.length };
     });
   }
 
