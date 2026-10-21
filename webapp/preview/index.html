@@ -285,6 +285,11 @@
   }
   .offline-sub { display: block; margin-top: 2px; font-size: 11.5px; color: #c08a3e; }
 
+  /* 未同步（推送失败但还能改）—— 蓝色，不吓人 */
+  .offline-bar.info { background: #eef4fd; color: #2f6fb5; }
+  .offline-bar.info .offline-dot { background: #378add; }
+  .offline-bar.info .offline-sub { color: #6b96c4; }
+
   /* 只读模式：禁掉所有编辑入口（导航和云备份本身仍可用） */
   body.readonly .task-input,
   body.readonly .check,
@@ -1299,7 +1304,7 @@
   var app = document.getElementById('app');
   var view = {
     screen: 'today', stagger: false, enteringId: '', leavingId: '', cloudBusy: '',
-    cloudOffline: false, cloudError: '',
+    cloudOffline: false, cloudDirty: false, cloudError: '',
     celebrating: false, numAnim: false, toggleIndex: null, prevDone: -1,
     form: { name: '', start: '', end: '' },
     formTouched: false,
@@ -1426,26 +1431,33 @@
      cloud.js 拉到云端数据 → 覆盖本地并重绘
      cloud.js 状态变化（离线）→ 顶部提示条 + 禁用编辑入口 */
   window.addEventListener('cloud:data', function (e) {
-    var c = buildContainer(e.detail);
+    var res = e.detail || {};
+    var c = buildContainer(res.data);
     if (!c) return;
     writeContainer(c);
     render();
   });
 
   window.addEventListener('cloud:state', function (e) {
-    var online = !!(e.detail && e.detail.online);
-    view.cloudOffline = !online;
-    view.cloudError = (e.detail && e.detail.error) || '';
-    document.body.classList.toggle('readonly', !online);
+    var d = e.detail || {};
+    view.cloudOffline = !d.online;
+    view.cloudDirty = !!d.dirty;
+    view.cloudError = d.error || '';
+    document.body.classList.toggle('readonly', !d.online);
     render();
   });
 
   function renderInto(html, overlayHtml) {
-    // 离线时顶部挂一条只读提示
+    // 离线 → 只读提示；未同步（推送失败但还能改）→ 蓝色提示，不锁界面
     var bar = '';
     if (view.cloudOffline) {
       bar = '<div class="offline-bar"><div class="offline-dot"></div><div>' +
             '当前离线，只能查看。打卡需要联网。' +
+            (view.cloudError ? '<span class="offline-sub">' + esc(view.cloudError) + '</span>' : '') +
+            '</div></div>';
+    } else if (view.cloudDirty) {
+      bar = '<div class="offline-bar info"><div class="offline-dot"></div><div>' +
+            '改动还没同步到云端，正在重试…' +
             (view.cloudError ? '<span class="offline-sub">' + esc(view.cloudError) + '</span>' : '') +
             '</div></div>';
     }
@@ -2338,8 +2350,8 @@
   function doCloudRestoreConfirmed() {
     view.cloudBusy = 'restore';
     render();
-    window.DailyCloud.restore().then(function (data) {
-      var c = buildContainer(data);
+    window.DailyCloud.restore().then(function (res) {
+      var c = buildContainer(res && res.data);
       if (!c) throw new Error('云端数据里没有账号');
       writeContainer(c);
       view.cloudBusy = '';

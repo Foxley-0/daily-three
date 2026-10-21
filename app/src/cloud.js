@@ -1,39 +1,38 @@
 /**
  * 云备份（WebDAV · 坚果云）
  *
- * 设计前提：**云端是唯一真相，不做合并、不做增量**。
- *   - 备份：整份 JSON PUT 上去
- *   - 恢复：整份 GET 下来，覆盖本地
- *   - 冲突：不存在（同一时刻只有一个在线设备在写）
+ * ── 双缓冲 ──
+ *   我的坚果云/daily-three-a.json
+ *   我的坚果云/daily-three-b.json
  *
- * ── 路径 ──
- *   https://dav.jianguoyun.com/dav/我的坚果云/backup-log.txt
- *   https://dav.jianguoyun.com/dav/我的坚果云/backup-20261021-132045.json
+ * 每次备份写到「上次没写的那个」，所以**任何时候都有一份完好的上一版**。
+ * 恢复时两个都读，取 savedAt 大的、能解析的那个。
+ * 这样代码写坏一次不会丢数据 —— 另一个文件还完好。
  *
- * 数据文件按**年月日-时分秒**命名，`backup-log.txt` 里每行记一次备份：
- *   2026-10-21 13:20:45  backup-20261021-132045.json
- * 恢复时读日志的**最后一行**拿到文件名，再去读那个文件。
- * 这样不需要"列目录"就能找回存档，也不用把路径绑在任何账号上。
+ * 文件内容：
+ *   { savedAt: 毫秒时间戳, device: 'xxx', data: { version, activeId, accounts } }
  *
- * ── 为什么不用 App 建目录 / 列目录（2026-10-20/21 实测） ──
- *   CapacitorHttp 只允许 OPTIONS/GET/HEAD/POST/PUT/DELETE/TRACE/PATCH：
- *     MKCOL    → 报错，App 建不了文件夹
- *     PROPFIND → 报错，App 列不了目录
+ * ── 为什么不用 MKCOL / PROPFIND（2026-10-21 实测） ──
+ *   CapacitorHttp 只允许 OPTIONS/GET/HEAD/POST/PUT/DELETE/TRACE/PATCH
+ *     → MKCOL 报错，App 建不了文件夹
+ *     → PROPFIND 报错，App 列不了目录
  *   GET 目录 → 坚果云返回 OperationNotAllowed
- *   坚果云行为：
- *     PUT /dav/我的坚果云/xxx.json    → 201 ✓（写进已存在的文件夹可以）
- *     PUT /dav/xxx.json（根目录）     → 404 ✗（根目录不许建文件）
- *     PUT /dav/不存在/x.json          → 409 ✗（父目录不存在）
- *   所以文件直接放在「我的坚果云」下面 —— 那是坚果云自带的目录，不用手动建。
+ *   所以文件直接放「我的坚果云」下面 —— 那是坚果云自带的目录，不用手动建。
  *
- * ── 多个账号 ──
- *   备份的是整个容器（`accounts` 数组），App 里所有账号都在同一个文件里。
- *   所以文件名不需要区分账号。
+ * ── 覆盖写可靠性（2026-10-21 实测坚果云） ──
+ *   PUT 已存在文件 → 204，内容正确替换
+ *   40KB 覆盖成 20B  → GET 20 字节，无残留
+ *   限速传 2MB 中途掐断 → 云端保持原来的完好版本（PUT 是原子的）
+ *   所以「网络中断写坏档」不会发生，双缓冲防的是**代码 bug**。
  */
 (function () {
   var CFG_KEY = 'daily_three_cloud';
   var BASE = 'https://dav.jianguoyun.com/dav';
   var HOME = '我的坚果云';
+  var SLOT_A = 'daily-three-a.json';
+  var SLOT_B = 'daily-three-b.json';
+  var RETRY_MS = 5000;
+  var DEBOUNCE_MS = 1500;
 
   /* ---------- 配置 ---------- */
 
@@ -51,8 +50,8 @@
       localStorage.setItem(CFG_KEY, JSON.stringify({
         user: String(cfg.user || '').trim(),
         pass: String(cfg.pass || ''),
-        lastBackup: cfg.lastBackup || 0,
-        lastFile: String(cfg.lastFile || '')
+        lastSlot: cfg.lastSlot === 'b' ? 'b' : (cfg.lastSlot === 'a' ? 'a' : ''),
+        lastBackup: cfg.lastBackup || 0
       }));
     } catch (e) {}
   }
@@ -70,10 +69,7 @@
 
   /* ---------- 路径 ---------- */
 
-  /**
-   * 服务器根地址。默认坚果云；localStorage 里设了 daily_three_cloud_base 就用它。
-   * 平时不暴露到界面 —— 用户不需要填地址。
-   */
+  /** 服务器根地址。默认坚果云；localStorage 设了 daily_three_cloud_base 就覆盖（测试用） */
   function baseUrl() {
     try {
       var o = localStorage.getItem('daily_three_cloud_base');
@@ -82,49 +78,9 @@
     return BASE;
   }
 
-  function dirUrl() {
-    return baseUrl() + '/' + encodeURIComponent(HOME);
-  }
-
-  /** 数据文件名：按日期，一天一个快照 */
-  function dataName(d) {
-    var x = d || new Date();
-    function p2(n) { return (n < 10 ? '0' : '') + n; }
-    return 'backup-' + x.getFullYear() + p2(x.getMonth() + 1) + p2(x.getDate()) +
-           '-' + p2(x.getHours()) + p2(x.getMinutes()) + p2(x.getSeconds()) + '.json';
-  }
-
-  var LOG = 'backup-log.txt';
-  var KEEP = 30;   // 云端最多留 30 个快照，更旧的自动删掉
-
+  function dirUrl() { return baseUrl() + '/' + encodeURIComponent(HOME); }
+  function slotUrl(slot) { return dirUrl() + '/' + (slot === 'b' ? SLOT_B : SLOT_A); }
   function relDir() { return HOME; }
-
-  /** 一行日志：时间 + 文件名 */
-  function logLine(file, at) {
-    var d = new Date(at || Date.now());
-    function p2(n) { return (n < 10 ? '0' : '') + n; }
-    return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) +
-           ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()) +
-           '  ' + file;
-  }
-
-  /** 从日志里取所有文件名（去重，保持出现顺序） */
-  function filesInLog(logText) {
-    var out = [];
-    var lines = String(logText || '').split(/\r?\n/);
-    for (var i = 0; i < lines.length; i++) {
-      var parts = lines[i].trim().split(/\s+/);
-      var name = parts[parts.length - 1];
-      if (/^backup-\d{8}-\d{6}\.json$/.test(name) && out.indexOf(name) < 0) out.push(name);
-    }
-    return out;
-  }
-
-  /** 从日志里取最后一个文件名 */
-  function lastFileOf(logText) {
-    var all = filesInLog(logText);
-    return all.length ? all[all.length - 1] : '';
-  }
 
   /* ---------- 请求 ---------- */
 
@@ -137,12 +93,8 @@
     }
   }
 
-  function authHeader(cfg) {
-    return 'Basic ' + b64(String(cfg.user || '') + ':' + String(cfg.pass || ''));
-  }
-
   function request(method, url, cfg, body) {
-    var headers = { Authorization: authHeader(cfg) };
+    var headers = { Authorization: 'Basic ' + b64(String(cfg.user || '') + ':' + String(cfg.pass || '')) };
     var opts = { method: method, headers: headers };
     if (body !== undefined && body !== null) {
       headers['Content-Type'] = 'application/json; charset=utf-8';
@@ -156,121 +108,94 @@
   }
 
   function httpErr(prefix, status) {
-    if (status === 401 || status === 403) {
-      return new Error('账号或应用密码不对（HTTP ' + status + '）');
-    }
-    if (status === 409) {
-      return new Error('坚果云说父目录不存在（HTTP 409）。检查账号能不能正常访问「我的坚果云」。');
-    }
-    if (status === 404) {
-      return new Error('路径不对（HTTP 404）。');
-    }
-    if (status === 507) {
-      return new Error('坚果云空间不够了（HTTP 507）');
-    }
+    if (status === 401 || status === 403) return new Error('账号或应用密码不对（HTTP ' + status + '）');
+    if (status === 409) return new Error('坚果云拒绝了这个路径（HTTP 409）。检查账号能不能正常访问「我的坚果云」。');
+    if (status === 507) return new Error('坚果云空间不够了（HTTP 507）');
     return new Error(prefix + '（HTTP ' + status + '）');
+  }
+
+  /** 读一个槽位，返回 { slot, savedAt, data } 或 null */
+  function readSlot(slot, cfg) {
+    return request('GET', slotUrl(slot), cfg).then(function (r) {
+      if (r.status === 404) return null;
+      if (r.status === 401 || r.status === 403) throw httpErr('读取失败', r.status);
+      if (!r.ok) return null;   // 其它状态当"这个槽坏了"，交给另一个槽兜底
+      var obj;
+      try {
+        obj = JSON.parse(r.text);
+      } catch (e) {
+        return null;            // 坏档 → 当没有
+      }
+      if (!obj || !obj.data || !Array.isArray(obj.data.accounts) || !obj.data.accounts.length) {
+        return null;
+      }
+      return { slot: slot, savedAt: Number(obj.savedAt) || 0, data: obj.data };
+    }).catch(function () {
+      return null;
+    });
   }
 
   /* ---------- 备份 / 恢复 ---------- */
 
   /**
-   * 备份三步走：
-   *   1. PUT 数据文件（backup-YYYYMMDD-HHMMSS.json，每次一个新文件）
-   *   2. GET 备份日志
-   *   3. PUT 日志（追加一行）
-   * 日志只留最近 200 行，防止无限增长。
+   * 备份：写到「上次没写的那个槽」。
+   * 本地记着 lastSlot，所以不需要先读，1 次 PUT 就够。
    */
   function backup(payload) {
     var cfg = readCfg();
     if (!cfg.user) return Promise.reject(new Error('还没填账号'));
 
-    var name = dataName();
-    var body = JSON.stringify(payload);
+    var target = cfg.lastSlot === 'a' ? 'b' : 'a';   // 上次写 a 就写 b，反之写 a
     var at = Date.now();
-    var logText = '';
+    var body = JSON.stringify({
+      savedAt: at,
+      device: String(cfg.device || ''),
+      data: payload
+    });
 
-    return request('PUT', dirUrl() + '/' + name, cfg, body).then(function (r) {
+    return request('PUT', slotUrl(target), cfg, body).then(function (r) {
       if (!(r.status === 200 || r.status === 201 || r.status === 204)) {
         throw httpErr('上传失败', r.status);
       }
-      // 读日志（可能还不存在）
-      return request('GET', dirUrl() + '/' + LOG, cfg);
-    }).then(function (r) {
-      var old = '';
-      if (r.status === 200 && r.ok) old = String(r.text || '');
-      else if (r.status !== 404) throw httpErr('读日志失败', r.status);
-
-      var lines = old.split(/\r?\n/).filter(function (x) { return x.trim(); });
-      lines.push(logLine(name, at));
-      if (lines.length > 200) lines = lines.slice(lines.length - 200);
-
-      logText = lines.join('\n') + '\n';
-      return request('PUT', dirUrl() + '/' + LOG, cfg, logText);
-    }).then(function (r) {
-      if (!(r.status === 200 || r.status === 201 || r.status === 204)) {
-        throw httpErr('写日志失败', r.status);
-      }
+      cfg.lastSlot = target;
       cfg.lastBackup = at;
-      cfg.lastFile = name;
       writeCfg(cfg);
-
-      // 顺手清掉太旧的快照（只留最近 KEEP 个）。删失败不影响备份结果。
-      var all = filesInLog(logText);
-      var extra = all.slice(0, Math.max(0, all.length - KEEP));
-      extra.forEach(function (n) {
-        request('DELETE', dirUrl() + '/' + n, cfg).catch(function () {});
-      });
-
-      return { bytes: body.length, file: name, path: relDir() + '/' + name, pruned: extra.length };
+      return { bytes: body.length, slot: target, path: relDir() + '/' + (target === 'b' ? SLOT_B : SLOT_A) };
     });
   }
 
-  /**
-   * 恢复：读备份日志，取最后一行里的文件名，再去读那个文件。
-   * 日志丢了就退回试今天的文件名。
-   */
+  /** 恢复：两个槽都读，取 savedAt 大且能解析的 */
   function restore() {
     var cfg = readCfg();
     if (!cfg.user) return Promise.reject(new Error('还没填账号'));
 
-    function fetchData(name) {
-      return request('GET', dirUrl() + '/' + name, cfg).then(function (r) {
-        if (r.status === 404) return null;
-        if (!r.ok) throw httpErr('下载失败', r.status);
-        var data;
-        try {
-          data = JSON.parse(r.text);
-        } catch (e) {
-          throw new Error('云端文件不是有效数据');
-        }
-        if (!data || !Array.isArray(data.accounts) || !data.accounts.length) {
-          throw new Error('云端数据格式不对');
-        }
-        return data;
-      });
-    }
-
-    return request('GET', dirUrl() + '/' + LOG, cfg).then(function (r) {
-      if (r.status === 404) {
-        return fetchData(dataName()).then(function (d) {
-          if (!d) throw new Error('云端还没有备份');
-          return d;
-        });
-      }
-      if (!r.ok) throw httpErr('读日志失败', r.status);
-
-      var name = lastFileOf(r.text);
-      if (!name) throw new Error('云端还没有备份');
-      return fetchData(name).then(function (d) {
-        if (!d) throw new Error('日志里指向的备份文件不见了：' + name);
-        return d;
-      });
+    return Promise.all([readSlot('a', cfg), readSlot('b', cfg)]).then(function (arr) {
+      var a = arr[0], b = arr[1];
+      if (!a && !b) throw new Error('云端还没有备份');
+      var best = (!a) ? b : (!b) ? a : (a.savedAt >= b.savedAt ? a : b);
+      var other = (best === a) ? b : a;
+      cfg.lastSlot = best.slot;          // 下次备份写另一个槽
+      cfg.lastBackup = best.savedAt;
+      writeCfg(cfg);
+      return {
+        data: best.data,
+        slot: best.slot,
+        savedAt: best.savedAt,
+        recovered: !!other ? (best.savedAt > other.savedAt) : false,
+        backupSlot: other ? other.slot : ''
+      };
     });
   }
 
   /* ---------- 自动同步 ---------- */
 
-  var state = { online: true, lastError: '', pushTimer: null, retryTimer: null };
+  var state = {
+    online: true,      // 启动时能不能连上云端
+    dirty: false,      // 有改动没推上去
+    lastError: '',
+    pushTimer: null,
+    retryTimer: null
+  };
 
   function emit(name, detail) {
     try {
@@ -278,60 +203,97 @@
     } catch (e) {}
   }
 
-  function setOnline(v, err) {
-    var changed = state.online !== v;
-    state.online = v;
-    state.lastError = v ? '' : (err || '');
-    if (changed) emit('cloud:state', { online: v, error: state.lastError });
-  }
-
-  function isOnline() { return state.online; }
-  function lastError() { return state.lastError; }
-
-  function autoPull() {
-    if (!isConfigured()) { setOnline(true); return Promise.resolve(); }
-    return restore().then(function (data) {
-      setOnline(true);
-      emit('cloud:data', data);
-    }).catch(function (e) {
-      var msg = String((e && e.message) || '');
-      if (msg.indexOf('还没有备份') >= 0) { setOnline(true); return; }
-      setOnline(false, msg);
+  function publishState() {
+    emit('cloud:state', {
+      online: state.online,
+      dirty: state.dirty,
+      error: state.lastError
     });
   }
 
-  function scheduleBackup(getPayload) {
-    if (!isConfigured() || !state.online) return;
-    clearTimeout(state.pushTimer);
-    state.pushTimer = setTimeout(function () {
-      var payload;
-      try {
-        payload = getPayload();
-      } catch (e) {
-        return;
-      }
-      if (!payload) return;
-      backup(payload).then(function () {
-        setOnline(true);
-        emit('cloud:pushed', { ok: true });
-      }).catch(function (e) {
-        setOnline(false, e && e.message);
-      });
-    }, 1500);
+  function isOnline() { return state.online; }
+  function isDirty() { return state.dirty; }
+  function lastError() { return state.lastError; }
+
+  /** 真正推一次 */
+  function flush(getPayload) {
+    var payload;
+    try {
+      payload = getPayload ? getPayload() : null;
+    } catch (e) {
+      payload = null;
+    }
+    if (!payload) return Promise.resolve(false);
+
+    return backup(payload).then(function () {
+      var changed = state.dirty || !state.online || state.lastError;
+      state.dirty = false;
+      state.online = true;
+      state.lastError = '';
+      if (changed) publishState();
+      emit('cloud:pushed', { ok: true });
+      return true;
+    }).catch(function (e) {
+      state.dirty = true;
+      state.lastError = (e && e.message) || '上传失败';
+      // ⚠️ 注意：这里**不把 online 置 false**。
+      // 推送失败不等于离线 —— 锁死只读会让本地改动永远上不去。
+      publishState();
+      scheduleRetry(getPayload);
+      return false;
+    });
   }
 
-  function startRetry() {
-    clearInterval(state.retryTimer);
-    state.retryTimer = setInterval(function () {
-      if (state.online || !isConfigured()) return;
-      autoPull();
-    }, 30000);
+  function scheduleRetry(getPayload) {
+    clearTimeout(state.retryTimer);
+    state.retryTimer = setTimeout(function () {
+      if (!state.dirty || !isConfigured()) return;
+      flush(getPayload);
+    }, RETRY_MS);
+  }
+
+  /** 启动时拉一次。拉不到才算离线（唯一会把 online 置 false 的地方） */
+  function autoPull() {
+    if (!isConfigured()) { state.online = true; publishState(); return Promise.resolve(null); }
+
+    // 有没推上去的改动 → 先推，别让云端旧数据覆盖本地
+    var pre = state.dirty ? Promise.resolve(true) : Promise.resolve(false);
+
+    return pre.then(function () {
+      return restore();
+    }).then(function (res) {
+      state.online = true;
+      state.lastError = '';
+      publishState();
+      emit('cloud:data', res);
+      return res;
+    }).catch(function (e) {
+      var msg = String((e && e.message) || '');
+      if (msg.indexOf('还没有备份') >= 0) {
+        state.online = true;
+        state.lastError = '';
+        publishState();
+        return null;
+      }
+      state.online = false;
+      state.lastError = msg;
+      publishState();
+      return null;
+    });
+  }
+
+  /** 改动后防抖推送（1.5 秒，连续改只推一次） */
+  function scheduleBackup(getPayload) {
+    if (!isConfigured()) return;
+    clearTimeout(state.pushTimer);
+    state.pushTimer = setTimeout(function () {
+      flush(getPayload);
+    }, DEBOUNCE_MS);
   }
 
   window.addEventListener('load', function () {
     if (!isConfigured()) return;
     autoPull();
-    startRetry();
   });
 
   window.DailyCloud = {
@@ -340,13 +302,13 @@
     writeCfg: writeCfg,
     isConfigured: isConfigured,
     relDir: relDir,
-    dataName: dataName,
     backup: backup,
     restore: restore,
     clear: clear,
     autoPull: autoPull,
     scheduleBackup: scheduleBackup,
     isOnline: isOnline,
+    isDirty: isDirty,
     lastError: lastError
   };
 })();
