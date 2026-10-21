@@ -77,18 +77,22 @@ jobs:
       # 解析器会判定 "Invalid workflow"，整个任务都创建不出来（踩过）。
       # 改成在脚本里判断环境变量是否为空。
       - name: 还原签名 keystore
+        id: sig
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
             echo "没有配置 KEYSTORE_BASE64，这次用默认 debug 签名"
+            echo "sigmsg=未配置 KEYSTORE_BASE64（默认 debug 签名）" >> $GITHUB_OUTPUT
             exit 0
           fi
           echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > app/android/app/release.keystore 2>/dev/null || true
           SIZE=$(stat -c%s app/android/app/release.keystore 2>/dev/null || echo 0)
           echo "keystore size: $SIZE"
+          echo "sigmsg=keystore $SIZE 字节" >> $GITHUB_OUTPUT
           if [ "$SIZE" -lt 1000 ]; then
             echo "keystore 解出来只有 $SIZE 字节，不是合法文件，这次用默认签名"
+            echo "sigmsg=keystore 只有 $SIZE 字节，已丢弃（默认 debug 签名）" >> $GITHUB_OUTPUT
             rm -f app/android/app/release.keystore
           fi
 
@@ -116,6 +120,8 @@ jobs:
           name: 最新构建
           body: |
             自动构建，来自提交 `${{ github.sha }}`
+
+            签名：${{ steps.sig.outputs.sigmsg }}
             分支：`${{ github.ref_name }}`
 
             安装：下载 `daily-three.apk`，传到手机，允许「未知来源」即可。
