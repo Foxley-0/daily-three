@@ -272,6 +272,31 @@
   .dlg-input::placeholder { color: #c3c7cd; }
   .dlg-err { margin-top: 8px; text-align: center; font-size: 12px; color: #e64340; }
 
+  /* 离线只读提示条 */
+  .offline-bar {
+    display: flex; align-items: flex-start; gap: 9px;
+    margin: 10px 16px 0; padding: 11px 14px;
+    background: #fff5e6; border-radius: 12px;
+    font-size: 13px; line-height: 1.5; color: #a9670a;
+  }
+  .offline-dot {
+    flex-shrink: 0; width: 8px; height: 8px; margin-top: 5px;
+    border-radius: 50%; background: #f0a020;
+  }
+  .offline-sub { display: block; margin-top: 2px; font-size: 11.5px; color: #c08a3e; }
+
+  /* 只读模式：禁掉所有编辑入口（导航和云备份本身仍可用） */
+  body.readonly .task-input,
+  body.readonly .check,
+  body.readonly .add,
+  body.readonly .acct-del,
+  body.readonly .row[data-act]:not([data-act^="cloud"]),
+  body.readonly .sheet-item,
+  body.readonly .tp-ok,
+  body.readonly .cal-day {
+    pointer-events: none; opacity: .45;
+  }
+
   /* 多字段对话框（云备份配置用） */
   .dlg-field { margin-top: 12px; }
   .dlg-field-label { margin-bottom: 5px; font-size: 12px; color: #8a8f99; text-align: left; }
@@ -1374,6 +1399,8 @@
         doResetAll();
       } else if (d.action === 'cloud-restore-confirm') {
         doCloudRestoreConfirmed();
+      } else if (d.action === 'delete-task') {
+        removeTaskById(d.payload);
       }
     }
 
@@ -1490,7 +1517,8 @@
       } else {
         html += '<input class="task-input" data-i="' + i + '" value="' + esc(t.text) + '" maxlength="40" placeholder="写一件今天要做的事">';
       }
-      if (canDelete) html += '<div class="del" data-act="del" data-i="' + i + '">×</div>';
+      // 已完成的任务不给删除按钮 —— 想删先取消勾选
+      if (canDelete && !t.done) html += '<div class="del" data-act="del" data-i="' + i + '">×</div>';
       html += '</div>';
     });
     html += '</div>';
@@ -1558,6 +1586,36 @@
     save(d);
     view.nameInput = '';
     renderToday();
+  }
+
+  /**
+   * 删除一条任务（确认之后才走到这里）。
+   * 规则：已完成的不许删；位子不能少于最少任务数。
+   * 先播 300ms 离场动画，再改数据。
+   */
+  function removeTaskById(id) {
+    var d = load();
+    var at = -1;
+    d.tasks.forEach(function (t, idx) { if (t.id === id) at = idx; });
+    if (at < 0) return;
+    if (d.tasks[at].done) {
+      alertBox('已完成的任务不能删除。想删的话先取消勾选。', '不能删除');
+      return;
+    }
+    if (d.tasks.length <= MIN_TASKS) return;
+
+    view.leavingId = id;
+    renderToday();
+    setTimeout(function () {
+      var d2 = load();
+      var at2 = -1;
+      d2.tasks.forEach(function (t, idx) { if (t.id === id) at2 = idx; });
+      if (at2 >= 0) d2.tasks.splice(at2, 1);
+      d2.tasks = padToMin(d2.tasks);
+      save(d2);
+      view.leavingId = '';
+      renderToday();
+    }, 300);
   }
 
   function updateProgressOnly() {
@@ -2044,7 +2102,7 @@
     html += '<div class="group-note">' +
             (window.DailyCloud
               ? '数据整份存到你自己的坚果云，不经过任何第三方服务器。账号密码只存在这台设备上。' +
-                (cloudReady ? '<br>存放位置：' + esc(window.DailyCloud.relPath(cloudCfg.user)) : '')
+                (cloudReady ? '<br>存放位置：' + esc(window.DailyCloud.relDir()) + '/' : '')
               : '云备份只在 App 版里可用 —— 网页预览版连不上 WebDAV（跨域）。') +
             '</div>';
 
@@ -2321,19 +2379,19 @@
       }, 520);
     } else if (act === 'del') {
       if (data.tasks.length <= MIN_TASKS) return;
-      var id = data.tasks[i].id;
-      view.leavingId = id;
-      renderToday();
-      setTimeout(function () {
-        var d = load();
-        var at = -1;
-        d.tasks.forEach(function (t, idx) { if (t.id === id) at = idx; });
-        if (at >= 0) d.tasks.splice(at, 1);
-        d.tasks = padToMin(d.tasks);
-        save(d);
-        view.leavingId = '';
-        renderToday();
-      }, 300);
+      var delTask = data.tasks[i];
+      if (!delTask || delTask.done) return;
+      var delText = String(delTask.text || '').trim();
+      if (!delText) return;
+      showDialog({
+        kind: 'confirm',
+        title: '删除任务',
+        text: '确定删除「' + delText + '」吗？删掉后今天就少这一条记录了。',
+        okText: '删除',
+        danger: true,
+        action: 'delete-task',
+        payload: delTask.id
+      });
     } else if (act === 'history') {
       view.screen = 'history';
       navDir = 'forward';
