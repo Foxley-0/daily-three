@@ -7,11 +7,11 @@
  *   - 冲突：不存在（同一时刻只有一个在线设备在写）
  *
  * ── 路径 ──
- *   https://dav.jianguoyun.com/dav/我的坚果云/daily-three/backup-log.txt
- *   https://dav.jianguoyun.com/dav/我的坚果云/daily-three/backup-20261021.json
+ *   https://dav.jianguoyun.com/dav/我的坚果云/backup-log.txt
+ *   https://dav.jianguoyun.com/dav/我的坚果云/backup-20261021-132045.json
  *
- * 数据文件按**日期**命名（一天一个快照），`backup-log.txt` 里每行记一次备份：
- *   2026-10-21 13:20:15  backup-20261021.json
+ * 数据文件按**年月日-时分秒**命名，`backup-log.txt` 里每行记一次备份：
+ *   2026-10-21 13:20:45  backup-20261021-132045.json
  * 恢复时读日志的**最后一行**拿到文件名，再去读那个文件。
  * 这样不需要"列目录"就能找回存档，也不用把路径绑在任何账号上。
  *
@@ -24,7 +24,7 @@
  *     PUT /dav/我的坚果云/xxx.json    → 201 ✓（写进已存在的文件夹可以）
  *     PUT /dav/xxx.json（根目录）     → 404 ✗（根目录不许建文件）
  *     PUT /dav/不存在/x.json          → 409 ✗（父目录不存在）
- *   所以 `daily-three` 文件夹要在坚果云里手动建一次，建完一直存在。
+ *   所以文件直接放在「我的坚果云」下面 —— 那是坚果云自带的目录，不用手动建。
  *
  * ── 多个账号 ──
  *   备份的是整个容器（`accounts` 数组），App 里所有账号都在同一个文件里。
@@ -34,7 +34,6 @@
   var CFG_KEY = 'daily_three_cloud';
   var BASE = 'https://dav.jianguoyun.com/dav';
   var HOME = '我的坚果云';
-  var TOP = 'daily-three';
 
   /* ---------- 配置 ---------- */
 
@@ -84,21 +83,20 @@
   }
 
   function dirUrl() {
-    return baseUrl() + '/' + encodeURIComponent(HOME) + '/' + TOP;
+    return baseUrl() + '/' + encodeURIComponent(HOME);
   }
 
   /** 数据文件名：按日期，一天一个快照 */
   function dataName(d) {
     var x = d || new Date();
-    var y = x.getFullYear();
-    var m = x.getMonth() + 1;
-    var day = x.getDate();
-    return 'backup-' + y + (m < 10 ? '0' : '') + m + (day < 10 ? '0' : '') + day + '.json';
+    function p2(n) { return (n < 10 ? '0' : '') + n; }
+    return 'backup-' + x.getFullYear() + p2(x.getMonth() + 1) + p2(x.getDate()) +
+           '-' + p2(x.getHours()) + p2(x.getMinutes()) + p2(x.getSeconds()) + '.json';
   }
 
   var LOG = 'backup-log.txt';
 
-  function relDir() { return HOME + '/' + TOP; }
+  function relDir() { return HOME; }
 
   /** 一行日志：时间 + 文件名 */
   function logLine(file, at) {
@@ -117,7 +115,7 @@
       if (!ln) continue;
       var parts = ln.split(/\s+/);
       var name = parts[parts.length - 1];
-      if (/^backup-\d{8}\.json$/.test(name)) return name;
+      if (/^backup-\d{8}-\d{6}\.json$/.test(name)) return name;
     }
     return '';
   }
@@ -156,11 +154,10 @@
       return new Error('账号或应用密码不对（HTTP ' + status + '）');
     }
     if (status === 409) {
-      return new Error('坚果云里没有「' + TOP + '」这个文件夹。\n\n' +
-        '请打开坚果云，在「我的坚果云」下面新建一个名为 ' + TOP + ' 的文件夹，建一次就好。');
+      return new Error('坚果云说父目录不存在（HTTP 409）。检查账号能不能正常访问「我的坚果云」。');
     }
     if (status === 404) {
-      return new Error('路径不对（HTTP 404）。检查坚果云里有没有 ' + TOP + ' 文件夹。');
+      return new Error('路径不对（HTTP 404）。');
     }
     if (status === 507) {
       return new Error('坚果云空间不够了（HTTP 507）');
@@ -172,7 +169,7 @@
 
   /**
    * 备份三步走：
-   *   1. PUT 数据文件（backup-YYYYMMDD.json，同一天覆盖同一个）
+   *   1. PUT 数据文件（backup-YYYYMMDD-HHMMSS.json，每次一个新文件）
    *   2. GET 备份日志
    *   3. PUT 日志（追加一行）
    * 日志只留最近 200 行，防止无限增长。
